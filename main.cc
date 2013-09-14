@@ -192,6 +192,20 @@ void printStats(void) {
 	}
 	cout<<"}, ";
 
+	// Output read depth histogram array
+	if(regionLength > 0) {
+		cout<<"\"read_depth\":{ ";
+		firstComma = false;
+		for(size_t i=0; i<256; i++) {
+			if (m_readDepth[i] > 0) {
+				if (firstComma) cout<<", ";
+				cout<<"\""<<i<<"\":"<<m_readDepth[i];
+				firstComma = true;
+			}
+		}
+		cout<<"},";
+	}
+
 	// Output read length hisogram array
 	cout<<"\"length_hist\":{ ";
 	firstComma = false;
@@ -203,19 +217,10 @@ void printStats(void) {
 		std::cout<<"\""<<it->first<<"\":"<<it->second;
 	}
 
-	cout<<"}, ";
-
-	// Output read depth histogram array
-	cout<<"\"read_depth\":{ ";
-	firstComma = false;
-	for(size_t i=0; i<256; i++) {
-		if (m_readDepth[i] > 0) {
-			if (firstComma) cout<<", ";
-			cout<<"\""<<i<<"\":"<<m_readDepth[i];
-			firstComma = true;
-		}
-	}
 	cout<<"}";
+
+	
+	
 
 	// Finalizing
 	cout<<"}";
