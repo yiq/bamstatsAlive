@@ -1,9 +1,11 @@
 #include <api/BamReader.h>
 #include <api/BamAlignment.h>
+#include <src/utils/bamtools_pileup_engine.h>
 #include <vector>
 #include <iostream>
 #include <cstdlib>
 #include <unistd.h>
+#include <assert.h>
 
 static unsigned int m_numReads;
 static unsigned int m_numPaired;
@@ -20,13 +22,41 @@ static unsigned int m_numDuplicates;
 
 static unsigned int m_mappingQualHist[256];
 static std::map<int32_t, unsigned int>m_lengthHist;
+static unsigned int m_readDepth[256];
 
 static unsigned int updateRate;
+static unsigned int regionStart;
+static unsigned int regionLength;
 
 using namespace std;
 
 void ProcessAlignment(const BamTools::BamAlignment& al);
 void printStats(void);
+
+class ReadDepthPileupVisitor : public BamTools::PileupVisitor
+{
+	public:
+		virtual void Visit(const BamTools::PileupPosition& pileupData) {
+
+			//determining bin
+			int32_t pos = pileupData.Position;
+			if(pos < regionStart || pos > regionStart + regionLength)
+				return;
+			unsigned int index = (float)(pos - regionStart) / (float)regionLength * 256;
+			if(index >= 256) index=255; //Bound Safaguard
+
+			int32_t depth = pileupData.PileupAlignments.size();
+			for(size_t i=0; i<pileupData.PileupAlignments.size(); i++) {
+				if(pileupData.PileupAlignments[i].IsCurrentDeletion)
+					depth--;
+			}
+
+			m_readDepth[index]+=depth;
+		}
+};
+
+static BamTools::PileupEngine * pileupEngine;
+static ReadDepthPileupVisitor * visitor;
 
 int main(int argc, char* argv[]) {
 
@@ -35,10 +65,17 @@ int main(int argc, char* argv[]) {
 
 
 	int ch;
-	while((ch = getopt(argc, argv, "u:")) != -1) {
+	while((ch = getopt(argc, argv, "u:s:l:")) != -1) {
 		switch(ch) {
 			case 'u':
 				updateRate = atoi(optarg);
+				break;
+			case 's':
+				regionStart = atoi(optarg);
+				break;
+			case 'l':
+				regionLength = atoi(optarg);
+				break;
 		}
 	}
 
@@ -57,6 +94,12 @@ int main(int argc, char* argv[]) {
 	if(!reader.IsOpen()) {
 		cout<<"{\"status\":\"error\", \"message\":\"Cannot open the specified file\"}"<<endl;
 		exit(1);
+	}
+
+	if(regionLength != 0) {
+		visitor = new ReadDepthPileupVisitor();
+		pileupEngine = new BamTools::PileupEngine;
+		pileupEngine->AddVisitor(visitor);
 	}
 
 	BamTools::BamAlignment alignment;
@@ -117,6 +160,11 @@ void ProcessAlignment(const BamTools::BamAlignment& al) {
         if ( al.IsProperPair() )
             ++m_numProperPair;
     }
+
+	// Inform the pileup engine
+	if(pileupEngine != NULL) {
+		pileupEngine->AddAlignment(al);
+	}
 }
 
 void printStats(void) {
@@ -131,6 +179,8 @@ void printStats(void) {
 	cout<<"\"duplicates\":"<<m_numDuplicates<<", ";
 	cout<<"\"pairedEnd_reads\":"<<m_numPaired<<", ";
 	cout<<"\"proper_pairs\":"<<m_numProperPair<<", ";
+
+	// Output mapping quality array
 	cout<<"\"mapq_hist\":{ ";
 	bool firstComma = false;
 	for(size_t i=0; i<256; i++) {
@@ -142,6 +192,7 @@ void printStats(void) {
 	}
 	cout<<"}, ";
 
+	// Output read length hisogram array
 	cout<<"\"length_hist\":{ ";
 	firstComma = false;
 
@@ -152,7 +203,21 @@ void printStats(void) {
 		std::cout<<"\""<<it->first<<"\":"<<it->second;
 	}
 
-	cout<<"} ";
+	cout<<"}, ";
+
+	// Output read depth histogram array
+	cout<<"\"read_depth\":{ ";
+	firstComma = false;
+	for(size_t i=0; i<256; i++) {
+		if (m_readDepth[i] > 0) {
+			if (firstComma) cout<<", ";
+			cout<<"\""<<i<<"\":"<<m_readDepth[i];
+			firstComma = true;
+		}
+	}
+	cout<<"}";
+
+	// Finalizing
 	cout<<"}";
 	
     cout << endl;
