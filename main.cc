@@ -7,26 +7,35 @@
 #include <unistd.h>
 #include <assert.h>
 
-static unsigned int m_numReads;
-static unsigned int m_numPaired;
-static unsigned int m_numProperPair;
-static unsigned int m_numMapped;
-static unsigned int m_numBothMatesMapped;
-static unsigned int m_numForwardStrand;
-static unsigned int m_numReverseStrand;
-static unsigned int m_numFirstMate;
-static unsigned int m_numSecondMate;
-static unsigned int m_numSingletons;
-static unsigned int m_numFailedQC;
-static unsigned int m_numDuplicates;
+static std::string const kTotalReads = "total_reads";
+static std::string const kPairedEndReads = "paired_end_reads";
+static std::string const kProperPairs = "proper_pairs";
+static std::string const kMappedReads = "mapped_reads";
+static std::string const kBothMatesMapped = "both_mates_mapped";
+static std::string const kForwardStrands = "forward_strands";
+static std::string const kReverseStrands = "reverse_strands";
+static std::string const kFirstMates = "first_mates";
+static std::string const kSecondMates = "second_mates";
+static std::string const kSingletons = "singletons";
+static std::string const kFailedQC = "failed_qc";
+static std::string const kDuplicates = "duplicates";
 
 static unsigned int m_mappingQualHist[256];
 static std::map<int32_t, unsigned int>m_lengthHist;
+static unsigned int m_baseCoverage[256];
 static unsigned int m_readDepth[256];
 
 static unsigned int updateRate;
 static unsigned int regionStart;
 static unsigned int regionLength;
+
+
+typedef std::map<std::string, unsigned int> StatMapT;
+
+static StatMapT m_stats;
+
+
+
 
 using namespace std;
 
@@ -51,7 +60,7 @@ class ReadDepthPileupVisitor : public BamTools::PileupVisitor
 					depth--;
 			}
 
-			m_readDepth[index]+=depth;
+			m_baseCoverage[index]+=depth;
 		}
 };
 
@@ -87,6 +96,19 @@ int main(int argc, char* argv[]) {
 	else 
 		filename = *argv;
 
+	m_stats[kTotalReads] = 0;
+	m_stats[kMappedReads] = 0;
+	m_stats[kForwardStrands] = 0;
+	m_stats[kReverseStrands] = 0;
+	m_stats[kFailedQC] = 0;
+	m_stats[kDuplicates] = 0;
+	m_stats[kPairedEndReads] = 0;
+	m_stats[kProperPairs] = 0;
+	m_stats[kBothMatesMapped] = 0;
+	m_stats[kFirstMates] = 0;
+	m_stats[kSecondMates] = 0;
+	m_stats[kSingletons] = 0;
+
 	BamTools::BamReader reader;
 
 	reader.Open(filename);
@@ -105,7 +127,7 @@ int main(int argc, char* argv[]) {
 	BamTools::BamAlignment alignment;
 	while(reader.GetNextAlignment(alignment)) {
 		ProcessAlignment(alignment);
-		if(m_numReads % updateRate == 0)
+		if(m_stats[kTotalReads] > 0 && m_stats[kTotalReads] % updateRate == 0)
 			printStats();
 	}
 
@@ -116,18 +138,18 @@ int main(int argc, char* argv[]) {
 void ProcessAlignment(const BamTools::BamAlignment& al) {
   
     // increment total alignment counter
-    ++m_numReads;
+    ++m_stats[kTotalReads];
     
     // incrememt counters for pairing-independent flags
-    if ( al.IsDuplicate() ) ++m_numDuplicates;
-    if ( al.IsFailedQC()  ) ++m_numFailedQC;
-    if ( al.IsMapped()    ) ++m_numMapped;
+    if ( al.IsDuplicate() ) ++m_stats[kDuplicates];
+    if ( al.IsFailedQC()  ) ++m_stats[kFailedQC];
+    if ( al.IsMapped()    ) ++m_stats[kMappedReads];
     
     // increment strand counters
     if ( al.IsReverseStrand() ) 
-        ++m_numReverseStrand;
+        ++m_stats[kReverseStrands];
     else 
-        ++m_numForwardStrand;
+        ++m_stats[kForwardStrands];
 
     m_mappingQualHist[al.MapQuality]++;
 
@@ -140,45 +162,58 @@ void ProcessAlignment(const BamTools::BamAlignment& al) {
     if ( al.IsPaired() ) {
       
         // increment PE counter
-        ++m_numPaired;
+        ++m_stats[kPairedEndReads];
       
         // increment first mate/second mate counters
-        if ( al.IsFirstMate()  ) ++m_numFirstMate;
-        if ( al.IsSecondMate() ) ++m_numSecondMate;
+        if ( al.IsFirstMate()  ) ++m_stats[kFirstMates];
+        if ( al.IsSecondMate() ) ++m_stats[kSecondMates];
         
         // if alignment is mapped, check mate status
         if ( al.IsMapped() ) {
             // if mate mapped
             if ( al.IsMateMapped() ) 
-                ++m_numBothMatesMapped;
+                ++m_stats[kBothMatesMapped];
             // else singleton
             else 
-                ++m_numSingletons;
+                ++m_stats[kSingletons];
         }
         
         // check for explicit proper pair flag
         if ( al.IsProperPair() )
-            ++m_numProperPair;
+            ++m_stats[kProperPairs];
     }
 
-	// Inform the pileup engine
+    // Read depth stats
+    if (regionLength > 0)
+    {
+    	int32_t pos = al.Position;
+    	if(pos < regionStart || pos > regionStart + regionLength)
+    		return;
+    	unsigned int index = (float)(pos - regionStart) / (float)regionLength * 256;
+		if(index >= 256) index=255; //Bound Safaguard
+
+		m_readDepth[index]++;
+    }
+
+    // Inform the pileup engine
 	if(pileupEngine != NULL) {
 		pileupEngine->AddAlignment(al);
+		pileupEngine->Flush();
+		delete pileupEngine;
+		pileupEngine = new BamTools::PileupEngine;
+		pileupEngine->AddVisitor(visitor);
 	}
+
 }
 
 void printStats(void) {
 
 	cout<<"{";
 
-	cout<<"\"total_reads\":"<<m_numReads<<", ";
-	cout<<"\"mapped_reads\":"<<m_numMapped<<", ";
-	cout<<"\"forward_strands\":"<<m_numForwardStrand<<", ";
-	cout<<"\"reverse_strand\":"<<m_numReverseStrand<<", ";
-	cout<<"\"failed_qc\":"<<m_numFailedQC<<", ";
-	cout<<"\"duplicates\":"<<m_numDuplicates<<", ";
-	cout<<"\"pairedEnd_reads\":"<<m_numPaired<<", ";
-	cout<<"\"proper_pairs\":"<<m_numProperPair<<", ";
+	StatMapT::iterator iter;
+	for(iter = m_stats.begin(); iter != m_stats.end(); iter++) {
+		cout<<"\""<<iter->first<<"\":"<<iter->second<<", ";
+	}
 
 	// Output mapping quality array
 	cout<<"\"mapq_hist\":{ ";
@@ -194,6 +229,17 @@ void printStats(void) {
 
 	// Output read depth histogram array
 	if(regionLength > 0) {
+		cout<<"\"base_coverage\":{ ";
+		firstComma = false;
+		for(size_t i=0; i<256; i++) {
+			if (m_baseCoverage[i] > 0) {
+				if (firstComma) cout<<", ";
+				cout<<"\""<<i<<"\":"<<m_baseCoverage[i];
+				firstComma = true;
+			}
+		}
+		cout<<"}, ";
+
 		cout<<"\"read_depth\":{ ";
 		firstComma = false;
 		for(size_t i=0; i<256; i++) {
@@ -203,7 +249,7 @@ void printStats(void) {
 				firstComma = true;
 			}
 		}
-		cout<<"},";
+		cout<<"}, ";
 	}
 
 	// Output read length hisogram array
