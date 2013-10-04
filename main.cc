@@ -21,6 +21,7 @@ static std::string const kFailedQC = "failed_qc";
 static std::string const kDuplicates = "duplicates";
 
 static unsigned int m_mappingQualHist[256];
+static std::map<int32_t, unsigned int>m_fragHist;
 static std::map<int32_t, unsigned int>m_lengthHist;
 static unsigned int m_baseCoverage[256];
 static unsigned int m_readDepth[256];
@@ -151,7 +152,7 @@ void ProcessAlignment(const BamTools::BamAlignment& al) {
     else 
         ++m_stats[kForwardStrands];
 
-    m_mappingQualHist[al.MapQuality]++;
+    m_mappingQualHist[al.MapQuality]++;    
 
     if(m_lengthHist.find(al.Length) != m_lengthHist.end())
     	m_lengthHist[al.Length]++;
@@ -171,8 +172,17 @@ void ProcessAlignment(const BamTools::BamAlignment& al) {
         // if alignment is mapped, check mate status
         if ( al.IsMapped() ) {
             // if mate mapped
-            if ( al.IsMateMapped() ) 
+            if ( al.IsMateMapped() )  {
                 ++m_stats[kBothMatesMapped];
+                // record fragment length of first pairs
+                if( al.MatePosition > al.Position )  {
+                   unsigned int frag = al.MatePosition - al.Position;
+                   if(m_fragHist.find(frag) != m_fragHist.end())
+                    	m_fragHist[frag]++;
+                   else
+                    	m_fragHist[frag] = 1;
+                }                   
+             }
             // else singleton
             else 
                 ++m_stats[kSingletons];
@@ -191,7 +201,7 @@ void ProcessAlignment(const BamTools::BamAlignment& al) {
     		return;
     	unsigned int index = (float)(pos - regionStart) / (float)regionLength * 256;
 		if(index >= 256) index=255; //Bound Safaguard
-
+   
 		m_readDepth[index]++;
     }
 
@@ -262,7 +272,18 @@ void printStats(void) {
 
 		std::cout<<"\""<<it->first<<"\":"<<it->second;
 	}
+	cout<<"}, ";
+	
+	// Output fragment length hisogram array
+	cout<<"\"frag_hist\":{ ";
+	firstComma = false;
 
+	for(map<int32_t, unsigned int>::iterator it = m_fragHist.begin(); it!=m_fragHist.end(); it++) {
+		if (firstComma) cout<<", ";
+		firstComma = true;
+
+		std::cout<<"\""<<it->first<<"\":"<<it->second;
+	}
 	cout<<"}";
 
 	
