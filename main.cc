@@ -23,6 +23,7 @@ static std::string const kDuplicates = "duplicates";
 static unsigned int m_mappingQualHist[256];
 static std::map<int32_t, unsigned int>m_fragHist;
 static std::map<int32_t, unsigned int>m_lengthHist;
+static std::map<std::string, unsigned int>m_refAlnHist;
 static unsigned int m_baseCoverage[256];
 static unsigned int m_readDepth[256];
 
@@ -40,7 +41,7 @@ static StatMapT m_stats;
 
 using namespace std;
 
-void ProcessAlignment(const BamTools::BamAlignment& al);
+void ProcessAlignment(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector);
 void printStats(void);
 
 class ReadDepthPileupVisitor : public BamTools::PileupVisitor
@@ -126,8 +127,9 @@ int main(int argc, char* argv[]) {
 	}
 
 	BamTools::BamAlignment alignment;
+   const BamTools::RefVector refVector = reader.GetReferenceData();
 	while(reader.GetNextAlignment(alignment)) {
-		ProcessAlignment(alignment);
+		ProcessAlignment(alignment, refVector);
 		if(m_stats[kTotalReads] > 0 && m_stats[kTotalReads] % updateRate == 0)
 			printStats();
 	}
@@ -136,10 +138,13 @@ int main(int argc, char* argv[]) {
 }
 
 
-void ProcessAlignment(const BamTools::BamAlignment& al) {
+void ProcessAlignment(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
   
     // increment total alignment counter
     ++m_stats[kTotalReads];
+    
+    // increment ref aln counter
+    if ( al.RefID != -1) m_refAlnHist[ refVector[al.RefID].RefName ]++;
     
     // incrememt counters for pairing-independent flags
     if ( al.IsDuplicate() ) ++m_stats[kDuplicates];
@@ -262,7 +267,7 @@ void printStats(void) {
 		cout<<"}, ";
 	}
 
-	// Output read length hisogram array
+	// Output read length histogram array
 	cout<<"\"length_hist\":{ ";
 	firstComma = false;
 
@@ -273,6 +278,19 @@ void printStats(void) {
 		std::cout<<"\""<<it->first<<"\":"<<it->second;
 	}
 	cout<<"}, ";
+	
+	// Output ref alignment histogram array
+	cout<<"\"refAln_hist\":{ ";
+	firstComma = false;
+
+	for(map<std::string, unsigned int>::iterator it = m_refAlnHist.begin(); it!=m_refAlnHist.end(); it++) {
+		if (firstComma) cout<<", ";
+		firstComma = true;
+
+		std::cout<<"\""<<it->first<<"\":"<<it->second;
+	}
+	cout<<"}, ";
+	
 	
 	// Output fragment length hisogram array
 	cout<<"\"frag_hist\":{ ";
