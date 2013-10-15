@@ -127,8 +127,9 @@ int main(int argc, char* argv[]) {
 	}
 
 	BamTools::BamAlignment alignment;
+   const BamTools::RefVector refVector = reader.GetReferenceData();
 	while(reader.GetNextAlignment(alignment)) {
-		ProcessAlignment(alignment, reader.GetReferenceData());
+		ProcessAlignment(alignment, refVector);
 		if(m_stats[kTotalReads] > 0 && m_stats[kTotalReads] % updateRate == 0)
 			printStats();
 	}
