@@ -372,7 +372,7 @@ void printStatsJansson(void) {
 	json_t * j_refAln_hist = json_object();
 	for(map<std::string, unsigned int>::iterator it = m_refAlnHist.begin(); it!=m_refAlnHist.end(); it++) {
 		stringstream labelSS; labelSS << it->first;
-		json_object_set_new(j_refAln_hist, labelSS.str().c_str(), j_refAln_hist);
+		json_object_set_new(j_refAln_hist, labelSS.str().c_str(), json_integer(it->second));
 	}
 	json_object_set_new(j_root, "refAln_hist", j_refAln_hist);
 	
