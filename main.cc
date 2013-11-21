@@ -181,7 +181,7 @@ void ProcessAlignment(const BamTools::BamAlignment& al, const BamTools::RefVecto
                 ++m_stats[kBothMatesMapped];
                 // record fragment length of first pairs
                 if( al.MatePosition > al.Position )  {
-                   unsigned int frag = al.MatePosition - al.Position;
+                   unsigned int frag = al.InsertSize; //al.MatePosition - al.Position;
                    if(m_fragHist.find(frag) != m_fragHist.end())
                     	m_fragHist[frag]++;
                    else
