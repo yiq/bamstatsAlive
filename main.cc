@@ -7,6 +7,9 @@
 #include <unistd.h>
 #include <assert.h>
 
+#include <sstream>
+#include <jansson.h>
+
 static std::string const kTotalReads = "total_reads";
 static std::string const kPairedEndReads = "paired_end_reads";
 static std::string const kProperPairs = "proper_pairs";
@@ -43,6 +46,8 @@ using namespace std;
 
 void ProcessAlignment(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector);
 void printStats(void);
+void printStatsJansson(void);
+
 
 class ReadDepthPileupVisitor : public BamTools::PileupVisitor
 {
@@ -127,14 +132,15 @@ int main(int argc, char* argv[]) {
 	}
 
 	BamTools::BamAlignment alignment;
-   const BamTools::RefVector refVector = reader.GetReferenceData();
+	const BamTools::RefVector refVector = reader.GetReferenceData();
 	while(reader.GetNextAlignment(alignment)) {
 		ProcessAlignment(alignment, refVector);
 		if(m_stats[kTotalReads] > 0 && m_stats[kTotalReads] % updateRate == 0)
 			printStats();
 	}
 
-	printStats();
+	//printStats();
+	printStatsJansson();
 }
 
 
@@ -311,4 +317,73 @@ void printStats(void) {
 	cout<<"}";
 	
     cout << endl;
+}
+
+void printStatsJansson(void) {
+
+	// Create the root object that contains everything
+	json_t * j_root = json_object();
+
+	// Scalar Statistics
+	StatMapT::iterator iter;
+	for(iter = m_stats.begin(); iter != m_stats.end(); iter++) 
+		json_object_set_new(j_root, iter->first.c_str(), json_integer(iter->second));
+
+	// Mapping quality map
+	json_t * j_mapq_hist = json_object();
+	for(size_t i=0; i<256; i++) {
+		if (m_mappingQualHist[i] > 0) {
+			stringstream labelSS; labelSS << i;
+			json_object_set_new(j_mapq_hist, labelSS.str().c_str(), json_integer(m_mappingQualHist[i]));
+		}
+	}
+	json_object_set_new(j_root, "mapq_hist", j_mapq_hist);
+
+	// Output read depth histogram array
+	if(regionLength > 0) {
+		json_t * j_base_coverage = json_object();
+		for(size_t i=0; i<256; i++) {
+			if (m_baseCoverage[i] > 0) {
+				stringstream labelSS; labelSS << i;
+				json_object_set_new(j_base_coverage, labelSS.str().c_str(), json_integer(m_baseCoverage[i]));
+			}
+		}
+		json_object_set_new(j_root, "base_coverage", j_base_coverage);
+
+		json_t * j_read_depth = json_object();
+		for(size_t i=0; i<256; i++) {
+			if (m_readDepth[i] > 0) {
+				stringstream labelSS; labelSS << i;
+				json_object_set_new(j_read_depth, labelSS.str().c_str(), json_integer(m_readDepth[i]));
+			}
+		}
+		json_object_set_new(j_root, "read_depth", j_read_depth);
+	}
+
+	// Read length histogram array
+	json_t * j_length_hist = json_object();
+	for(map<int32_t, unsigned int>::iterator it = m_lengthHist.begin(); it!=m_lengthHist.end(); it++) {
+		stringstream labelSS; labelSS << it->first;
+		json_object_set_new(j_length_hist, labelSS.str().c_str(), json_integer(it->second));
+	}
+	json_object_set_new(j_root, "length_hist", j_length_hist);
+	
+	// Reference alignment histogram array
+	json_t * j_refAln_hist = json_object();
+	for(map<std::string, unsigned int>::iterator it = m_refAlnHist.begin(); it!=m_refAlnHist.end(); it++) {
+		stringstream labelSS; labelSS << it->first;
+		json_object_set_new(j_refAln_hist, labelSS.str().c_str(), json_integer(it->second));
+	}
+	json_object_set_new(j_root, "refAln_hist", j_refAln_hist);
+	
+	// Fragment length hisogram array
+	
+	json_t * j_frag_hist = json_object();
+	for(map<int32_t, unsigned int>::iterator it = m_fragHist.begin(); it!=m_fragHist.end(); it++) {
+		stringstream labelSS; labelSS<<it->first;
+		json_object_set_new(j_frag_hist, labelSS.str().c_str(), json_integer(it->second));
+	}
+	json_object_set_new(j_root, "frag_hist", j_frag_hist);
+
+	cout<<json_dumps(j_root, JSON_COMPACT | JSON_ENSURE_ASCII | JSON_PRESERVE_ORDER)<<endl;
 }
