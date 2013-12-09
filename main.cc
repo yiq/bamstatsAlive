@@ -45,7 +45,6 @@ static StatMapT m_stats;
 using namespace std;
 
 void ProcessAlignment(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector);
-void printStats(void);
 void printStatsJansson(void);
 
 
@@ -136,10 +135,9 @@ int main(int argc, char* argv[]) {
 	while(reader.GetNextAlignment(alignment)) {
 		ProcessAlignment(alignment, refVector);
 		if(m_stats[kTotalReads] > 0 && m_stats[kTotalReads] % updateRate == 0)
-			printStats();
+			printStatsJansson();
 	}
 
-	//printStats();
 	printStatsJansson();
 }
 
@@ -225,98 +223,6 @@ void ProcessAlignment(const BamTools::BamAlignment& al, const BamTools::RefVecto
 		pileupEngine->AddVisitor(visitor);
 	}
 
-}
-
-void printStats(void) {
-
-	cout<<"{";
-
-	StatMapT::iterator iter;
-	for(iter = m_stats.begin(); iter != m_stats.end(); iter++) {
-		cout<<"\""<<iter->first<<"\":"<<iter->second<<", ";
-	}
-
-	// Output mapping quality array
-	cout<<"\"mapq_hist\":{ ";
-	bool firstComma = false;
-	for(size_t i=0; i<256; i++) {
-		if (m_mappingQualHist[i] > 0) {
-			if (firstComma) cout<<", ";
-			cout<<"\""<<i<<"\":"<<m_mappingQualHist[i];
-			firstComma = true;
-		}
-	}
-	cout<<"}, ";
-
-	// Output read depth histogram array
-	if(regionLength > 0) {
-		cout<<"\"base_coverage\":{ ";
-		firstComma = false;
-		for(size_t i=0; i<256; i++) {
-			if (m_baseCoverage[i] > 0) {
-				if (firstComma) cout<<", ";
-				cout<<"\""<<i<<"\":"<<m_baseCoverage[i];
-				firstComma = true;
-			}
-		}
-		cout<<"}, ";
-
-		cout<<"\"read_depth\":{ ";
-		firstComma = false;
-		for(size_t i=0; i<256; i++) {
-			if (m_readDepth[i] > 0) {
-				if (firstComma) cout<<", ";
-				cout<<"\""<<i<<"\":"<<m_readDepth[i];
-				firstComma = true;
-			}
-		}
-		cout<<"}, ";
-	}
-
-	// Output read length histogram array
-	cout<<"\"length_hist\":{ ";
-	firstComma = false;
-
-	for(map<int32_t, unsigned int>::iterator it = m_lengthHist.begin(); it!=m_lengthHist.end(); it++) {
-		if (firstComma) cout<<", ";
-		firstComma = true;
-
-		std::cout<<"\""<<it->first<<"\":"<<it->second;
-	}
-	cout<<"}, ";
-	
-	// Output ref alignment histogram array
-	cout<<"\"refAln_hist\":{ ";
-	firstComma = false;
-
-	for(map<std::string, unsigned int>::iterator it = m_refAlnHist.begin(); it!=m_refAlnHist.end(); it++) {
-		if (firstComma) cout<<", ";
-		firstComma = true;
-
-		std::cout<<"\""<<it->first<<"\":"<<it->second;
-	}
-	cout<<"}, ";
-	
-	
-	// Output fragment length hisogram array
-	cout<<"\"frag_hist\":{ ";
-	firstComma = false;
-
-	for(map<int32_t, unsigned int>::iterator it = m_fragHist.begin(); it!=m_fragHist.end(); it++) {
-		if (firstComma) cout<<", ";
-		firstComma = true;
-
-		std::cout<<"\""<<it->first<<"\":"<<it->second;
-	}
-	cout<<"}";
-
-	
-	
-
-	// Finalizing
-	cout<<"}";
-	
-    cout << endl;
 }
 
 void printStatsJansson(void) {
