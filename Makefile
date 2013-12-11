@@ -1,13 +1,37 @@
 CFLAGS=-I$(BAMTOOLS)/src -I$(BAMTOOLS) -Ilib/jansson-2.5/src -g
 LDFLAGS=-L$(BAMTOOLS)/lib -lbamtools
 
+.SUFFIXES: .cc
+
 SOURCES=main.cc \
-		$(BAMTOOLS)/src/utils/bamtools_pileup_engine.cpp
+		AbstractStatCollector.cc \
+		BasicStatsCollector.cc 
+
+OBJECTS=main.o \
+		AbstractStatCollector.o \
+		BasicStatsCollector.o \
+		bamtools_pileup_engine.o
 
 STATLIBS=lib/jansson-2.5/src/.libs/libjansson.a
 
-bamstatsAlive: checkvar libjansson main.cc
-	$(CXX) $(CFLAGS) -o bamstatsAlive $(SOURCES) $(STATLIBS) $(LDFLAGS)
+all: bamstatsAlive
+
+clean:
+	rm -rf *.o *.dSYM bamstatsAlive
+
+clean-dep:
+	make -C lib/jansson-2.5 clean
+
+.PHONY: all clean clean-dep
+
+.cc.o :
+	$(CXX) -c $< $(CFLAGS)
+
+bamtools_pileup_engine.o: $(BAMTOOLS)/src/utils/bamtools_pileup_engine.cpp
+	$(CXX) -c $< $(CFLAGS)
+
+bamstatsAlive: checkvar libjansson $(OBJECTS)
+	$(CXX) $(CFLAGS) -o bamstatsAlive $(OBJECTS) $(STATLIBS) $(LDFLAGS)
 
 checkvar:
 	@if [ "x$(BAMTOOLS)" = "x" ]; then echo "BAMTOOLS need to be defined"; exit 1; fi
