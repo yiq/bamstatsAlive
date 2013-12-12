@@ -1,4 +1,5 @@
 #include "BasicStatsCollector.h"
+#include <iostream>
 
 using namespace BamstatsAlive;
 
@@ -15,6 +16,14 @@ BasicStatsCollector::BasicStatsCollector() {
 	m_stats[kFirstMates] = 0;
 	m_stats[kSecondMates] = 0;
 	m_stats[kSingletons] = 0;
+
+	m_stats.clear();
+
+	StatMapT::iterator iter;
+	for(iter = m_stats.begin(); iter != m_stats.end(); iter++) {
+		std::cerr<<"Initializing: "<<iter->first<<std::endl;
+	}
+
 }
 
 void BasicStatsCollector::processAlignment(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
@@ -57,4 +66,15 @@ void BasicStatsCollector::processAlignment(const BamTools::BamAlignment& al, con
 		if ( al.IsProperPair() )
 			++m_stats[kProperPairs];
 	}
+}
+
+json_t * BasicStatsCollector::appendJson(json_t * jsonRootObj) {
+
+	StatMapT::iterator iter;
+	for(iter = m_stats.begin(); iter != m_stats.end(); iter++) {
+		std::cerr<<"Appending: "<<iter->first<<std::endl;
+		json_object_set_new(jsonRootObj, iter->first.c_str(), json_integer(iter->second));
+	}
+
+	return jsonRootObj;
 }

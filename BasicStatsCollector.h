@@ -22,14 +22,17 @@ namespace BamstatsAlive {
 	static std::string const kFailedQC = "failed_qc";
 	static std::string const kDuplicates = "duplicates";
 
+	typedef std::map<std::string, unsigned int> StatMapT;
+
 	class BasicStatsCollector : public AbstractStatCollector {
 
 		protected:
-			std::map<std::string, unsigned int> m_stats;
+			StatMapT m_stats;
 
 		public:
 			BasicStatsCollector();
 			virtual void processAlignment(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector);
+			virtual json_t * appendJson(json_t * jsonRootObj);
 	};
 }
 

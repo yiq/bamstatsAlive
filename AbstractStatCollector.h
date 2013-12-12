@@ -11,7 +11,7 @@ namespace BamstatsAlive {
 
 	class AbstractStatCollector;
 
-	typedef std::vector<const AbstractStatCollector *> StatCollectorPtrVec;
+	typedef std::vector<AbstractStatCollector *> StatCollectorPtrVec;
 
 	class AbstractStatCollector {
 		protected:
@@ -21,8 +21,10 @@ namespace BamstatsAlive {
 			AbstractStatCollector();
 			virtual ~AbstractStatCollector();
 
-			void addChild(const AbstractStatCollector * child);
-			void removeChild(const AbstractStatCollector * child);
+			void addChild(AbstractStatCollector * child);
+			void removeChild(AbstractStatCollector * child);
+			void handleAlignment(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector);
+
 
 			virtual void processAlignment(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) = 0;
 			virtual json_t * appendJson(json_t * jsonRootObj) = 0;

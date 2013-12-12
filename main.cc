@@ -10,18 +10,8 @@
 #include <sstream>
 #include <jansson.h>
 
-static std::string const kTotalReads = "total_reads";
-static std::string const kPairedEndReads = "paired_end_reads";
-static std::string const kProperPairs = "proper_pairs";
-static std::string const kMappedReads = "mapped_reads";
-static std::string const kBothMatesMapped = "both_mates_mapped";
-static std::string const kForwardStrands = "forward_strands";
-static std::string const kReverseStrands = "reverse_strands";
-static std::string const kFirstMates = "first_mates";
-static std::string const kSecondMates = "second_mates";
-static std::string const kSingletons = "singletons";
-static std::string const kFailedQC = "failed_qc";
-static std::string const kDuplicates = "duplicates";
+#include "AbstractStatCollector.h"
+#include "BasicStatsCollector.h"
 
 static unsigned int m_mappingQualHist[256];
 static std::map<int32_t, unsigned int>m_fragHist;
@@ -34,13 +24,9 @@ static unsigned int updateRate;
 static unsigned int regionStart;
 static unsigned int regionLength;
 
+static unsigned int totalReads;
 
-typedef std::map<std::string, unsigned int> StatMapT;
-
-static StatMapT m_stats;
-
-
-
+BamstatsAlive::BasicStatsCollector bsc;
 
 using namespace std;
 
@@ -102,19 +88,6 @@ int main(int argc, char* argv[]) {
 	else 
 		filename = *argv;
 
-	m_stats[kTotalReads] = 0;
-	m_stats[kMappedReads] = 0;
-	m_stats[kForwardStrands] = 0;
-	m_stats[kReverseStrands] = 0;
-	m_stats[kFailedQC] = 0;
-	m_stats[kDuplicates] = 0;
-	m_stats[kPairedEndReads] = 0;
-	m_stats[kProperPairs] = 0;
-	m_stats[kBothMatesMapped] = 0;
-	m_stats[kFirstMates] = 0;
-	m_stats[kSecondMates] = 0;
-	m_stats[kSingletons] = 0;
-
 	BamTools::BamReader reader;
 
 	reader.Open(filename);
@@ -130,11 +103,14 @@ int main(int argc, char* argv[]) {
 		pileupEngine->AddVisitor(visitor);
 	}
 
+
 	BamTools::BamAlignment alignment;
 	const BamTools::RefVector refVector = reader.GetReferenceData();
 	while(reader.GetNextAlignment(alignment)) {
+		totalReads++;
 		ProcessAlignment(alignment, refVector);
-		if(m_stats[kTotalReads] > 0 && m_stats[kTotalReads] % updateRate == 0)
+		bsc.processAlignment(alignment, refVector);
+		if(totalReads > 0 && totalReads % updateRate == 0)
 			printStatsJansson();
 	}
 
@@ -142,25 +118,12 @@ int main(int argc, char* argv[]) {
 }
 
 
+
 void ProcessAlignment(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
   
-    // increment total alignment counter
-    ++m_stats[kTotalReads];
-    
     // increment ref aln counter
     if ( al.RefID != -1) m_refAlnHist[ refVector[al.RefID].RefName ]++;
     
-    // incrememt counters for pairing-independent flags
-    if ( al.IsDuplicate() ) ++m_stats[kDuplicates];
-    if ( al.IsFailedQC()  ) ++m_stats[kFailedQC];
-    if ( al.IsMapped()    ) ++m_stats[kMappedReads];
-    
-    // increment strand counters
-    if ( al.IsReverseStrand() ) 
-        ++m_stats[kReverseStrands];
-    else 
-        ++m_stats[kForwardStrands];
-
     m_mappingQualHist[al.MapQuality]++;    
 
     if(m_lengthHist.find(al.Length) != m_lengthHist.end())
@@ -168,39 +131,22 @@ void ProcessAlignment(const BamTools::BamAlignment& al, const BamTools::RefVecto
     else
     	m_lengthHist[al.Length] = 1;
     
-    // if alignment is paired-end
-    if ( al.IsPaired() ) {
-      
-        // increment PE counter
-        ++m_stats[kPairedEndReads];
-      
-        // increment first mate/second mate counters
-        if ( al.IsFirstMate()  ) ++m_stats[kFirstMates];
-        if ( al.IsSecondMate() ) ++m_stats[kSecondMates];
-        
-        // if alignment is mapped, check mate status
-        if ( al.IsMapped() ) {
-            // if mate mapped
-            if ( al.IsMateMapped() )  {
-                ++m_stats[kBothMatesMapped];
-                // record fragment length of first pairs
-                if( al.MatePosition > al.Position )  {
-                   unsigned int frag = al.InsertSize; //al.MatePosition - al.Position;
-                   if(m_fragHist.find(frag) != m_fragHist.end())
-                    	m_fragHist[frag]++;
-                   else
-                    	m_fragHist[frag] = 1;
-                }                   
-             }
-            // else singleton
-            else 
-                ++m_stats[kSingletons];
-        }
-        
-        // check for explicit proper pair flag
-        if ( al.IsProperPair() )
-            ++m_stats[kProperPairs];
-    }
+	// if alignment is paired-end
+	if ( al.IsPaired() ) {
+		// if alignment is mapped, check mate status
+		if ( al.IsMapped() ) {
+			// if mate mapped
+			if ( al.IsMateMapped() )  {
+				if( al.MatePosition > al.Position )  {
+					unsigned int frag = al.InsertSize; //al.MatePosition - al.Position;
+					if(m_fragHist.find(frag) != m_fragHist.end())
+						m_fragHist[frag]++;
+					else
+						m_fragHist[frag] = 1;
+				}                   
+			}
+		}
+	}
 
     // Read depth stats
     if (regionLength > 0)
@@ -230,10 +176,8 @@ void printStatsJansson(void) {
 	// Create the root object that contains everything
 	json_t * j_root = json_object();
 
-	// Scalar Statistics
-	StatMapT::iterator iter;
-	for(iter = m_stats.begin(); iter != m_stats.end(); iter++) 
-		json_object_set_new(j_root, iter->first.c_str(), json_integer(iter->second));
+	bsc.appendJson(j_root);
+
 
 	// Mapping quality map
 	json_t * j_mapq_hist = json_object();
