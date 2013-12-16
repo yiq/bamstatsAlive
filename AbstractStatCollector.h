@@ -25,7 +25,7 @@ namespace BamstatsAlive {
 	 * processAlignment() and appendJson() functions on the root object, and 
 	 * the action will be propagated across all child nodes. The actual 
 	 * implementation of specific collectors is encapsulated by the protected
-	 * processAlignmentImpl() and appendJsonImpl()
+	 * processAlignmentImpl() and appendJsonImpl() functions
 	 */
 	class AbstractStatCollector {
 		protected:
