@@ -20,12 +20,12 @@ namespace BamstatsAlive {
 	 *   - processAlignment() to update statistics
 	 *   - appendJson() to create the json representation of the statistics
 	 *
-	 * These statistics can be organized into a tree with the addChild() and 
-	 * removeChild() functions. User code will only need to call the public
-	 * processAlignment() and appendJson() functions on the root object, and 
-	 * the action will be propagated across all child nodes. The actual 
-	 * implementation of specific collectors is encapsulated by the protected
-	 * processAlignmentImpl() and appendJsonImpl() functions
+	 * These statistics collectors can be organized into a tree with the
+	 * addChild() and removeChild() functions. User code will only need to call
+	 * the public processAlignment() and appendJson() functions on the root
+	 * object, and the action will be propagated across all child nodes. The
+	 * actual implementation of specific collectors is encapsulated by the
+	 * protected processAlignmentImpl() and appendJsonImpl() functions
 	 */
 	class AbstractStatCollector {
 		protected:
