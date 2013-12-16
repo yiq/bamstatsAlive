@@ -37,11 +37,26 @@ void AbstractStatCollector::removeChild(AbstractStatCollector * child) {
 
 	_children.erase(loc);
 }
-void AbstractStatCollector::handleAlignment(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
-	this->processAlignment(al, refVector);
+
+void AbstractStatCollector::processAlignment(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
+	this->processAlignmentImpl(al, refVector);
 
 	StatCollectorPtrVec::iterator iter;
 	for(iter = _children.begin(); iter != _children.end(); iter++) {
 		(*iter)->processAlignment(al, refVector);
 	}
+}
+
+json_t * AbstractStatCollector::appendJson(json_t * jsonRootObj) {
+	if(jsonRootObj == NULL)
+		jsonRootObj = json_object();
+
+	this->appendJsonImpl(jsonRootObj);
+	
+	StatCollectorPtrVec::iterator iter;
+	for(iter = _children.begin(); iter != _children.end(); iter++) {
+		(*iter)->appendJson(jsonRootObj);
+	}
+
+	return jsonRootObj;
 }
