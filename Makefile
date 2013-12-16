@@ -5,11 +5,15 @@ LDFLAGS=-L$(BAMTOOLS)/lib -lbamtools
 
 SOURCES=main.cc \
 		AbstractStatCollector.cc \
-		BasicStatsCollector.cc 
+		BasicStatsCollector.cc \
+		HistogramStatsCollector.cc \
+		CoverageMapStatsCollector.cc 
 
 OBJECTS=main.o \
 		AbstractStatCollector.o \
 		BasicStatsCollector.o \
+		HistogramStatsCollector.o \
+		CoverageMapStatsCollector.o \
 		bamtools_pileup_engine.o
 
 STATLIBS=lib/jansson-2.5/src/.libs/libjansson.a

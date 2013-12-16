@@ -26,7 +26,7 @@ BasicStatsCollector::BasicStatsCollector() {
 
 }
 
-void BasicStatsCollector::processAlignment(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
+void BasicStatsCollector::processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
 	// increment total alignment counter
 	++m_stats[kTotalReads];
 
@@ -68,13 +68,9 @@ void BasicStatsCollector::processAlignment(const BamTools::BamAlignment& al, con
 	}
 }
 
-json_t * BasicStatsCollector::appendJson(json_t * jsonRootObj) {
-
+void BasicStatsCollector::appendJsonImpl(json_t * jsonRootObj) {
 	StatMapT::iterator iter;
 	for(iter = m_stats.begin(); iter != m_stats.end(); iter++) {
-		std::cerr<<"Appending: "<<iter->first<<std::endl;
 		json_object_set_new(jsonRootObj, iter->first.c_str(), json_integer(iter->second));
 	}
-
-	return jsonRootObj;
 }

@@ -29,10 +29,11 @@ namespace BamstatsAlive {
 		protected:
 			StatMapT m_stats;
 
+			virtual void processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector);
+			virtual void appendJsonImpl(json_t * jsonRootObj);
+
 		public:
 			BasicStatsCollector();
-			virtual void processAlignment(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector);
-			virtual json_t * appendJson(json_t * jsonRootObj);
 	};
 }
 
