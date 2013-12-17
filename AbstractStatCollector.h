@@ -46,6 +46,16 @@ namespace BamstatsAlive {
 			 */
 			virtual void appendJsonImpl(json_t * jsonRootObj) = 0;
 
+			/** 
+			 * Check if the statistics collector is satisfied with the data it
+			 * has seen so far. Note that the defualt implementation of this
+			 * function always returns false, which means that by default, a
+			 * collector will keep processing reads indefinitely.
+			 *
+			 * @return true if the data is considered to be sufficient, false otherwise
+			 */
+			virtual bool isSatisfiedImpl();
+
 		public:
 			AbstractStatCollector();
 			virtual ~AbstractStatCollector();
@@ -89,6 +99,13 @@ namespace BamstatsAlive {
 			 * @return The json object representing the root of all the statistics
 			 */
 			json_t * appendJson(json_t * jsonRootObj = NULL);
+
+			/**
+			 * Check satisfy-ness of the collector tree
+			 *
+			 * @return true if all collectors in the tree are satisfied, false otherwise
+			 */
+			bool isSatisfied();
 	};
 
 }

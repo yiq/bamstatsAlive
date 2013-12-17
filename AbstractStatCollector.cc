@@ -60,3 +60,20 @@ json_t * AbstractStatCollector::appendJson(json_t * jsonRootObj) {
 
 	return jsonRootObj;
 }
+
+bool AbstractStatCollector::isSatisfiedImpl() {
+	return false;
+}
+
+bool AbstractStatCollector::isSatisfied() {
+	if (not this->isSatisfiedImpl()) return false;
+
+	bool isChildrenSatisfied = true;
+
+	StatCollectorPtrVec::iterator iter;
+	for(iter = _children.begin(); iter != _children.end(); iter++) {
+		isChildrenSatisfied = isChildrenSatisfied && (*iter)->isSatisfied();
+	}
+
+	return isChildrenSatisfied;
+}
