@@ -7,13 +7,15 @@ SOURCES=main.cc \
 		AbstractStatCollector.cc \
 		BasicStatsCollector.cc \
 		HistogramStatsCollector.cc \
-		CoverageMapStatsCollector.cc 
+		CoverageMapStatsCollector.cc \
+		DeltaAverageRatioChangeMonitor.cc
 
 OBJECTS=main.o \
 		AbstractStatCollector.o \
 		BasicStatsCollector.o \
 		HistogramStatsCollector.o \
 		CoverageMapStatsCollector.o \
+		DeltaAverageRatioChangeMonitor.o \
 		bamtools_pileup_engine.o
 
 STATLIBS=lib/jansson-2.5/src/.libs/libjansson.a
