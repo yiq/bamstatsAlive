@@ -24,12 +24,13 @@ namespace BamstatsAlive {
 	static std::string const kDuplicates = "duplicates";
 
 	typedef std::map<std::string, unsigned int> StatMapT;
+	typedef std::map<std::string, AbstractChangeMonitor<double> *> ChangeMonitorMapT;
 
 	class BasicStatsCollector : public AbstractStatCollector {
 
 		protected:
 			StatMapT _stats;
-			AbstractChangeMonitor<double> * _changeMonitor;
+			ChangeMonitorMapT _monitors;
 
 			virtual void processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector);
 			virtual void appendJsonImpl(json_t * jsonRootObj);

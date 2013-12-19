@@ -75,11 +75,11 @@ int main(int argc, char* argv[]) {
 	bsc = new BasicStatsCollector();
 
 	hsc = new HistogramStatsCollector();
-	bsc->addChild(hsc);
+	//bsc->addChild(hsc);
 
 	if(regionLength != 0) {
 		csc = new BamstatsAlive::CoverageMapStatsCollector(regionStart, regionLength);
-		bsc->addChild(csc);
+		//bsc->addChild(csc);
 	}
 
 
