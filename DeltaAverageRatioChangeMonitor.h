@@ -5,6 +5,8 @@
 
 #include "AbstractChangeMonitor.h"
 
+#include <cmath>
+
 namespace BamstatsAlive {
 
 	template<class T>
@@ -32,8 +34,14 @@ namespace BamstatsAlive {
 
 			virtual bool isSatisfied() {
 				double average = _total / static_cast<double>(count);
-				double daRatio = _delta / average;
+				double daRatio = fabs(_delta / average);
 				return daRatio < _threshold;
+			}
+
+			double currentRatio() {
+				double average = _total / static_cast<double>(count);
+				//return  fabs(_delta / average);
+				return static_cast<double>(_delta);
 			}
 	};
 }

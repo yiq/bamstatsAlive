@@ -4,6 +4,7 @@
 #pragma once
 
 #include "AbstractStatCollector.h"
+#include "AbstractChangeMonitor.h"
 #include <map>
 #include <string>
 
@@ -27,7 +28,8 @@ namespace BamstatsAlive {
 	class BasicStatsCollector : public AbstractStatCollector {
 
 		protected:
-			StatMapT m_stats;
+			StatMapT _stats;
+			AbstractChangeMonitor<double> * _changeMonitor;
 
 			virtual void processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector);
 			virtual void appendJsonImpl(json_t * jsonRootObj);

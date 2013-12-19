@@ -1,76 +1,84 @@
 #include "BasicStatsCollector.h"
+#include "StandardDeviationChangeMonitor.h"
+#include "DeltaAverageRatioChangeMonitor.h"
 #include <iostream>
 
 using namespace BamstatsAlive;
 
 BasicStatsCollector::BasicStatsCollector() {
-	m_stats[kTotalReads] = 0;
-	m_stats[kMappedReads] = 0;
-	m_stats[kForwardStrands] = 0;
-	m_stats[kReverseStrands] = 0;
-	m_stats[kFailedQC] = 0;
-	m_stats[kDuplicates] = 0;
-	m_stats[kPairedEndReads] = 0;
-	m_stats[kProperPairs] = 0;
-	m_stats[kBothMatesMapped] = 0;
-	m_stats[kFirstMates] = 0;
-	m_stats[kSecondMates] = 0;
-	m_stats[kSingletons] = 0;
+	_stats[kTotalReads] = 0;
+	_stats[kMappedReads] = 0;
+	_stats[kForwardStrands] = 0;
+	_stats[kReverseStrands] = 0;
+	_stats[kFailedQC] = 0;
+	_stats[kDuplicates] = 0;
+	_stats[kPairedEndReads] = 0;
+	_stats[kProperPairs] = 0;
+	_stats[kBothMatesMapped] = 0;
+	_stats[kFirstMates] = 0;
+	_stats[kSecondMates] = 0;
+	_stats[kSingletons] = 0;
 
-	m_stats.clear();
+	_stats.clear();
 
 	StatMapT::iterator iter;
-	for(iter = m_stats.begin(); iter != m_stats.end(); iter++) {
+	for(iter = _stats.begin(); iter != _stats.end(); iter++) {
 		std::cerr<<"Initializing: "<<iter->first<<std::endl;
 	}
+
+	_changeMonitor = new StandardDeviationChangeMonitor<double>(3, 0.05);
 
 }
 
 void BasicStatsCollector::processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
 	// increment total alignment counter
-	++m_stats[kTotalReads];
+	++_stats[kTotalReads];
 
 	// incrememt counters for pairing-independent flags
-	if ( al.IsDuplicate() ) ++m_stats[kDuplicates];
-	if ( al.IsFailedQC()  ) ++m_stats[kFailedQC];
-	if ( al.IsMapped()    ) ++m_stats[kMappedReads];
+	if ( al.IsDuplicate() ) ++_stats[kDuplicates];
+	if ( al.IsFailedQC()  ) ++_stats[kFailedQC];
+	if ( al.IsMapped()    ) ++_stats[kMappedReads];
 
 	// increment strand counters
 	if ( al.IsReverseStrand() ) 
-		++m_stats[kReverseStrands];
+		++_stats[kReverseStrands];
 	else 
-		++m_stats[kForwardStrands];
+		++_stats[kForwardStrands];
 
 	// if alignment is paired-end
 	if ( al.IsPaired() ) {
 
 		// increment PE counter
-		++m_stats[kPairedEndReads];
+		++_stats[kPairedEndReads];
 
 		// increment first mate/second mate counters
-		if ( al.IsFirstMate()  ) ++m_stats[kFirstMates];
-		if ( al.IsSecondMate() ) ++m_stats[kSecondMates];
+		if ( al.IsFirstMate()  ) ++_stats[kFirstMates];
+		if ( al.IsSecondMate() ) ++_stats[kSecondMates];
 
 		// if alignment is mapped, check mate status
 		if ( al.IsMapped() ) {
 			// if mate mapped
 			if ( al.IsMateMapped() )  {
-				++m_stats[kBothMatesMapped];
+				++_stats[kBothMatesMapped];
 			}
 			// else singleton
 			else 
-				++m_stats[kSingletons];
+				++_stats[kSingletons];
 		}
 
 		// check for explicit proper pair flag
 		if ( al.IsProperPair() )
-			++m_stats[kProperPairs];
+			++_stats[kProperPairs];
 	}
 }
 
 void BasicStatsCollector::appendJsonImpl(json_t * jsonRootObj) {
 	StatMapT::iterator iter;
-	for(iter = m_stats.begin(); iter != m_stats.end(); iter++) {
+	for(iter = _stats.begin(); iter != _stats.end(); iter++) {
 		json_object_set_new(jsonRootObj, iter->first.c_str(), json_integer(iter->second));
 	}
+
+	_changeMonitor->addValue(_stats[kMappedReads] / static_cast<double>(_stats[kTotalReads]));
+	std::cerr<<"Fraction: "<<_stats[kMappedReads] / static_cast<double>(_stats[kTotalReads])<<std::endl;
+	std::cerr<<"Stdev: "<<dynamic_cast<StandardDeviationChangeMonitor<double>*>(_changeMonitor)->getStdev()<<std::endl;
 }
