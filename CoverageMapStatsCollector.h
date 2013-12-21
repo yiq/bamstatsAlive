@@ -5,10 +5,6 @@
 
 #include "AbstractStatCollector.h"
 
-#include <api/BamAlignment.h>
-#include <src/utils/bamtools_pileup_engine.h>
-#include <jansson.h>
-
 namespace BamstatsAlive {
 
 	class CoverageMapStatsCollector : public AbstractStatCollector {

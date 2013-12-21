@@ -1,11 +1,5 @@
 #include "HistogramStatsCollector.h"
 
-#include <api/BamAlignment.h>
-#include <map>
-#include <string>
-#include <sstream>
-#include <jansson.h>
-
 using namespace BamstatsAlive;
 using namespace std;
 

@@ -3,10 +3,6 @@
 
 #pragma once
 
-#include <vector>
-#include <api/BamAlignment.h>
-#include <jansson.h>
-
 namespace BamstatsAlive {
 
 	class AbstractStatCollector;

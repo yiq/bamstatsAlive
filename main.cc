@@ -1,12 +1,3 @@
-#include <api/BamReader.h>
-#include <api/BamAlignment.h>
-#include <iostream>
-#include <cstdlib>
-#include <unistd.h>
-#include <assert.h>
-
-#include <jansson.h>
-
 #include "AbstractStatCollector.h"
 #include "BasicStatsCollector.h"
 #include "HistogramStatsCollector.h"

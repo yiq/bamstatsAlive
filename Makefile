@@ -21,7 +21,7 @@ STATLIBS=lib/jansson-2.5/src/.libs/libjansson.a
 all: bamstatsAlive
 
 clean:
-	rm -rf *.o *.dSYM bamstatsAlive
+	rm -rf *.o *.dSYM bamstatsAlive bamstatsAliveCommon.hpp.gch
 
 clean-dep:
 	make -C lib/jansson-2.5 clean
@@ -29,12 +29,15 @@ clean-dep:
 .PHONY: all clean clean-dep
 
 .cc.o :
-	$(CXX) -c $< $(CFLAGS)
+	$(CXX) -c $< $(CFLAGS) -include bamstatsAliveCommon.hpp
 
 bamtools_pileup_engine.o: $(BAMTOOLS)/src/utils/bamtools_pileup_engine.cpp
 	$(CXX) -c $< $(CFLAGS)
 
-bamstatsAlive: checkvar libjansson $(OBJECTS)
+bamstatsAliveCommon.hpp.gch: bamstatsAliveCommon.hpp
+	$(CXX) $(CFLAGS) -x c++-header $< -Winvalid-pch -o $@
+
+bamstatsAlive: checkvar libjansson bamstatsAliveCommon.hpp.gch $(OBJECTS)
 	$(CXX) $(CFLAGS) -o bamstatsAlive $(OBJECTS) $(STATLIBS) $(LDFLAGS)
 
 checkvar:

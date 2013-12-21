@@ -1,7 +1,6 @@
 #include "BasicStatsCollector.h"
 #include "StandardDeviationChangeMonitor.h"
 #include "DeltaAverageRatioChangeMonitor.h"
-#include <iostream>
 
 using namespace BamstatsAlive;
 

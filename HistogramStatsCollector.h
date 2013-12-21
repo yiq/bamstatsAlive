@@ -5,10 +5,6 @@
 
 #include "AbstractStatCollector.h"
 
-#include <map>
-#include <string>
-#include <jansson.h>
-
 namespace BamstatsAlive {
 
 	class HistogramStatsCollector : public AbstractStatCollector {
