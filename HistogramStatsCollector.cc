@@ -1,11 +1,5 @@
 #include "HistogramStatsCollector.h"
 
-#include <api/BamAlignment.h>
-#include <map>
-#include <string>
-#include <sstream>
-#include <jansson.h>
-
 using namespace BamstatsAlive;
 using namespace std;
 
@@ -21,8 +15,8 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
     	m_lengthHist[al.Length] = 1;
     
 	// if alignment is paired-end
-	if ( al.IsPaired() && al.IsMapped() && al.IsMateMapped() ) {
-		if( al.MatePosition > al.Position )  {
+	if ( al.IsPaired() && al.IsMapped() && al.IsMateMapped()) {
+		if( al.RefID == al.MateRefID && al.MatePosition > al.Position )  {
 			unsigned int frag = al.InsertSize; //al.MatePosition - al.Position;
 			if(m_fragHist.find(frag) != m_fragHist.end())
 				m_fragHist[frag]++;

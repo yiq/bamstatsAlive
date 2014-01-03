@@ -1,7 +1,6 @@
 #include "BasicStatsCollector.h"
 #include "StandardDeviationChangeMonitor.h"
 #include "DeltaAverageRatioChangeMonitor.h"
-#include <iostream>
 
 using namespace BamstatsAlive;
 
@@ -97,12 +96,4 @@ void BasicStatsCollector::appendJsonImpl(json_t * jsonRootObj) {
 	}
 
 	bool consensus = true;
-	
-	for(cIter = _monitors.begin(); cIter != _monitors.end(); cIter++) {
-		consensus = consensus && cIter->second->isSatisfied();
-		std::cerr<<"\t"<<cIter->first<<":"<<cIter->second->isSatisfied()<<std::endl;
-	}
-
-	std::cerr<<"Consensus: "<<consensus<<std::endl;
-
 }

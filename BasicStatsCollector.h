@@ -5,8 +5,6 @@
 
 #include "AbstractStatCollector.h"
 #include "AbstractChangeMonitor.h"
-#include <map>
-#include <string>
 
 namespace BamstatsAlive {
 

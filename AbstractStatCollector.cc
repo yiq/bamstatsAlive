@@ -1,8 +1,5 @@
 #include "AbstractStatCollector.h"
 
-#include <vector>
-#include <algorithm>
-
 using namespace BamstatsAlive;
 
 AbstractStatCollector::AbstractStatCollector() {
@@ -32,7 +29,7 @@ void AbstractStatCollector::removeChild(AbstractStatCollector * child) {
 	if(child == NULL) return;
 
 	// Make sure the input is a child
-	StatCollectorPtrVec::const_iterator loc = std::find(_children.begin(), _children.end(), child);
+	StatCollectorPtrVec::iterator loc = std::find(_children.begin(), _children.end(), child);
 	if(loc == _children.end()) return;
 
 	_children.erase(loc);

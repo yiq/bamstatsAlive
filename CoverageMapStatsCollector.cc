@@ -1,9 +1,5 @@
 #include "CoverageMapStatsCollector.h"
 
-#include <api/BamAlignment.h>
-#include <src/utils/bamtools_pileup_engine.h>
-#include <sstream>
-
 namespace BamstatsAlive {
 	class ReadDepthPileupVisitor : public BamTools::PileupVisitor {
 		protected:
