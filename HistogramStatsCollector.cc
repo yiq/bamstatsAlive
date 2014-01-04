@@ -1,7 +1,40 @@
 #include "HistogramStatsCollector.h"
 
+namespace BamstatsAlive {
+
+	typedef std::map<size_t, unsigned int> _CoverageHistogramT;
+
+	class CoverageHistogramVisitor : public BamTools::PileupVisitor {
+
+		_CoverageHistogramT _histogram;
+
+		public:
+			void Visit(const BamTools::PileupPosition& pileupData) {
+				size_t s = pileupData.PileupAlignments.size();
+				_CoverageHistogramT::iterator iter = _histogram.find(s);
+
+				if(iter == _histogram.end()) 	_histogram[s] = 1;
+				else 							_histogram[s]++;
+			}
+
+			// allow HistogramStatsCollector to directly access _histogram
+			friend class HistogramStatsCollector;
+	};
+}
+
 using namespace BamstatsAlive;
 using namespace std;
+
+
+HistogramStatsCollector::HistogramStatsCollector() {
+	_pileupEngine.reset(new BamTools::PileupEngine);
+	_readDepthHistVisitor = new CoverageHistogramVisitor;
+	_pileupEngine->AddVisitor(_readDepthHistVisitor);
+}
+
+HistogramStatsCollector::~HistogramStatsCollector() {
+	if(_readDepthHistVisitor) delete _readDepthHistVisitor;
+}
 
 void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
     // increment ref aln counter
@@ -24,6 +57,8 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
 				m_fragHist[frag] = 1;
 		}                   
 	}
+
+	_pileupEngine->AddAlignment(al);
 }
 
 void HistogramStatsCollector::appendJsonImpl(json_t *jsonRootObj) {
@@ -60,4 +95,12 @@ void HistogramStatsCollector::appendJsonImpl(json_t *jsonRootObj) {
 		json_object_set_new(j_refAln_hist, labelSS.str().c_str(), json_integer(it->second));
 	}
 	json_object_set_new(jsonRootObj, "refAln_hist", j_refAln_hist);
+
+	// Coverage Histogram
+	json_t * j_cov_hist = json_object();
+	for(_CoverageHistogramT::iterator it = _readDepthHistVisitor->_histogram.begin(); it != _readDepthHistVisitor->_histogram.end(); it++) {
+		stringstream labelSS; labelSS << it->first;
+		json_object_set_new(j_cov_hist, labelSS.str().c_str(), json_integer(it->second));
+	}
+	json_object_set_new(jsonRootObj, "coverage_hist:", j_cov_hist);
 }

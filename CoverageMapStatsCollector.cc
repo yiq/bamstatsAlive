@@ -10,7 +10,8 @@ namespace BamstatsAlive {
 			unsigned int m_baseCoverage[256];
 
 			ReadDepthPileupVisitor(unsigned int start, unsigned int length) : regionStart(start), regionLength(length) {
-
+				for(size_t i=0; i<256; i++)
+					m_baseCoverage[i] = 0;
 			}
 
 			virtual void Visit(const BamTools::PileupPosition& pileupData) {
@@ -39,14 +40,16 @@ using namespace std;
 CoverageMapStatsCollector::CoverageMapStatsCollector(unsigned int start, unsigned int length) : 
 	regionStart(start), regionLength(length)
 {
-	pileupEngine = new BamTools::PileupEngine;
+	pileupEngine.reset(new BamTools::PileupEngine);
 	visitor = new ReadDepthPileupVisitor(regionStart, regionLength);
 	pileupEngine->AddVisitor(visitor);
+
+	for(size_t i=0; i<256; i++)
+		m_readDepth[i] = 0;
 }
 
 CoverageMapStatsCollector::~CoverageMapStatsCollector() {
-	delete(pileupEngine);
-	delete(visitor);
+	if(visitor) delete(visitor);
 }
 
 void CoverageMapStatsCollector::processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
@@ -60,10 +63,6 @@ void CoverageMapStatsCollector::processAlignmentImpl(const BamTools::BamAlignmen
 	m_readDepth[index]++;
 
 	pileupEngine->AddAlignment(al);
-	pileupEngine->Flush();
-	delete pileupEngine;
-	pileupEngine = new BamTools::PileupEngine;
-	pileupEngine->AddVisitor(visitor);
 }
 
 void CoverageMapStatsCollector::appendJsonImpl(json_t * jsonRootObj) {
