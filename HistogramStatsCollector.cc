@@ -27,13 +27,14 @@ using namespace std;
 
 
 HistogramStatsCollector::HistogramStatsCollector() {
-	_pileupEngine.reset(new BamTools::PileupEngine);
+	_pileupEngine = new BamTools::PileupEngine;
 	_readDepthHistVisitor = new CoverageHistogramVisitor;
 	_pileupEngine->AddVisitor(_readDepthHistVisitor);
 }
 
 HistogramStatsCollector::~HistogramStatsCollector() {
 	if(_readDepthHistVisitor) delete _readDepthHistVisitor;
+	if(_pileupEngine) delete _pileupEngine;
 }
 
 void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
