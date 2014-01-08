@@ -38,9 +38,9 @@ using namespace BamstatsAlive;
 using namespace std;
 
 CoverageMapStatsCollector::CoverageMapStatsCollector(unsigned int start, unsigned int length) : 
-	regionStart(start), regionLength(length)
+	regionStart(start), regionLength(length), pileupEngine(NULL), visitor(NULL)
 {
-	pileupEngine.reset(new BamTools::PileupEngine);
+	pileupEngine = new BamTools::PileupEngine;
 	visitor = new ReadDepthPileupVisitor(regionStart, regionLength);
 	pileupEngine->AddVisitor(visitor);
 
@@ -50,6 +50,7 @@ CoverageMapStatsCollector::CoverageMapStatsCollector(unsigned int start, unsigne
 
 CoverageMapStatsCollector::~CoverageMapStatsCollector() {
 	if(visitor) delete(visitor);
+	if(pileupEngine) delete pileupEngine;
 }
 
 void CoverageMapStatsCollector::processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
