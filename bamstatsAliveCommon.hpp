@@ -34,7 +34,4 @@
 // Jansson JSON manipulation library
 #include <jansson.h>
 
-// C++11 headers
-#include <memory>
-
 #endif
