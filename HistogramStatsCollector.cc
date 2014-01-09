@@ -73,23 +73,28 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
 
 void HistogramStatsCollector::appendJsonImpl(json_t *jsonRootObj) {
 
-	if(m_covHistAccumu >= kCovHistSkipFactor) {
-		// getting ready for another round of piling up
-		
-		m_covHistAccumu = 0;
-		_pileupEngine = new BamTools::PileupEngine;
-		//_readDepthHistVisitor = new CoverageHistogramVisitor(m_covHist, m_covHistLocs);
-		_pileupEngine->AddVisitor(_readDepthHistVisitor);
-	}
-	else {
-		++m_covHistAccumu;
-		if(_pileupEngine) {
-			// if just finished a round of piling up
 
-			_pileupEngine->Flush();
-			delete _pileupEngine;
-			_pileupEngine = NULL;
+	if(kCovHistSkipFactor != 0) {
+		if(m_covHistAccumu >= kCovHistSkipFactor) {
+			// getting ready for another round of piling up
+
+			m_covHistAccumu = 0;
+			_pileupEngine = new BamTools::PileupEngine;
+			//_readDepthHistVisitor = new CoverageHistogramVisitor(m_covHist, m_covHistLocs);
+			_pileupEngine->AddVisitor(_readDepthHistVisitor);
 		}
+		else {
+			++m_covHistAccumu;
+			if(_pileupEngine) {
+				// if just finished a round of piling up
+
+				_pileupEngine->Flush();
+				delete _pileupEngine;
+				_pileupEngine = NULL;
+			}
+		}
+	} else {
+		m_covHistAccumu = 0;
 	}
 
 	// Mapping quality map
