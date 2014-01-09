@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
 	BasicStatsCollector bsc;
 
 	// Histogram Statistics
-	HistogramStatsCollector hsc;
+	HistogramStatsCollector hsc(10);
 	bsc.addChild(&hsc);
 
 	// Coverage Map Statistics, only when regionLength is greater than 0

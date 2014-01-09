@@ -2,33 +2,42 @@
 
 namespace BamstatsAlive {
 
-	typedef std::map<size_t, unsigned int> _CoverageHistogramT;
 
 	class CoverageHistogramVisitor : public BamTools::PileupVisitor {
 
-		_CoverageHistogramT _histogram;
+		_CoverageHistogramT& _histogram;
+		unsigned int& _locs;
 
 		public:
+
+			CoverageHistogramVisitor(_CoverageHistogramT& covHist, unsigned int& locs) 
+				: BamTools::PileupVisitor(), _histogram(covHist), _locs(locs) {
+
+				;
+			}
+
 			void Visit(const BamTools::PileupPosition& pileupData) {
 				size_t s = pileupData.PileupAlignments.size();
 				_CoverageHistogramT::iterator iter = _histogram.find(s);
 
 				if(iter == _histogram.end()) 	_histogram[s] = 1;
 				else 							_histogram[s]++;
+				_locs++;
 			}
-
-			// allow HistogramStatsCollector to directly access _histogram
-			friend class HistogramStatsCollector;
 	};
 }
 
 using namespace BamstatsAlive;
 using namespace std;
 
+HistogramStatsCollector::HistogramStatsCollector(unsigned int skipFactor) : 
+	kCovHistSkipFactor(skipFactor), 
+	m_covHistLocs(0), 
+	m_covHistAccumu(0) 
+{
 
-HistogramStatsCollector::HistogramStatsCollector() {
 	_pileupEngine = new BamTools::PileupEngine;
-	_readDepthHistVisitor = new CoverageHistogramVisitor;
+	_readDepthHistVisitor = new CoverageHistogramVisitor(m_covHist, m_covHistLocs);
 	_pileupEngine->AddVisitor(_readDepthHistVisitor);
 }
 
@@ -59,10 +68,30 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
 		}                   
 	}
 
-	_pileupEngine->AddAlignment(al);
+	if(m_covHistAccumu == 0 && _pileupEngine) _pileupEngine->AddAlignment(al);
 }
 
 void HistogramStatsCollector::appendJsonImpl(json_t *jsonRootObj) {
+
+	if(m_covHistAccumu >= kCovHistSkipFactor) {
+		// getting ready for another round of piling up
+		
+		m_covHistAccumu = 0;
+		_pileupEngine = new BamTools::PileupEngine;
+		//_readDepthHistVisitor = new CoverageHistogramVisitor(m_covHist, m_covHistLocs);
+		_pileupEngine->AddVisitor(_readDepthHistVisitor);
+	}
+	else {
+		++m_covHistAccumu;
+		if(_pileupEngine) {
+			// if just finished a round of piling up
+
+			_pileupEngine->Flush();
+			delete _pileupEngine;
+			_pileupEngine = NULL;
+		}
+	}
+
 	// Mapping quality map
 	json_t * j_mapq_hist = json_object();
 	for(size_t i=0; i<256; i++) {
@@ -99,9 +128,9 @@ void HistogramStatsCollector::appendJsonImpl(json_t *jsonRootObj) {
 
 	// Coverage Histogram
 	json_t * j_cov_hist = json_object();
-	for(_CoverageHistogramT::iterator it = _readDepthHistVisitor->_histogram.begin(); it != _readDepthHistVisitor->_histogram.end(); it++) {
+	for(_CoverageHistogramT::const_iterator it = m_covHist.begin(); it != m_covHist.end(); it++) {
 		stringstream labelSS; labelSS << it->first;
-		json_object_set_new(j_cov_hist, labelSS.str().c_str(), json_integer(it->second));
+		json_object_set_new(j_cov_hist, labelSS.str().c_str(), json_real(it->second / static_cast<double>(m_covHistLocs)));
 	}
 	json_object_set_new(jsonRootObj, "coverage_hist:", j_cov_hist);
 }

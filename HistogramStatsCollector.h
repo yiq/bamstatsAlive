@@ -7,6 +7,8 @@
 
 namespace BamstatsAlive {
 
+	typedef std::map<size_t, unsigned int> _CoverageHistogramT;
+
 	class CoverageHistogramVisitor;
 
 	class HistogramStatsCollector : public AbstractStatCollector {
@@ -15,6 +17,11 @@ namespace BamstatsAlive {
 			std::map<int32_t, unsigned int> m_fragHist;
 			std::map<int32_t, unsigned int> m_lengthHist;
 			std::map<std::string, unsigned int> m_refAlnHist;
+			_CoverageHistogramT m_covHist;
+			unsigned int m_covHistLocs;
+			unsigned int m_covHistAccumu;
+
+			const unsigned int kCovHistSkipFactor;
 
 			BamTools::PileupEngine * _pileupEngine;
 			CoverageHistogramVisitor * _readDepthHistVisitor;
@@ -23,7 +30,7 @@ namespace BamstatsAlive {
 			virtual void appendJsonImpl(json_t * jsonRootObj);
 
 		public:
-			HistogramStatsCollector();
+			HistogramStatsCollector(unsigned int skipFactor = 0);
 			virtual ~HistogramStatsCollector();
 
 
