@@ -1,4 +1,5 @@
 #include "HistogramStatsCollector.h"
+#include <cmath>
 
 namespace BamstatsAlive {
 
@@ -135,7 +136,10 @@ void HistogramStatsCollector::appendJsonImpl(json_t *jsonRootObj) {
 	json_t * j_cov_hist = json_object();
 	for(_CoverageHistogramT::const_iterator it = m_covHist.begin(); it != m_covHist.end(); it++) {
 		stringstream labelSS; labelSS << it->first;
-		json_object_set_new(j_cov_hist, labelSS.str().c_str(), json_real(it->second / static_cast<double>(m_covHistLocs)));
+      double rounded = floor( (it->second / static_cast<double>(m_covHistLocs)) * 1000) / 1000;
+      std::stringstream ss(stringstream::in | stringstream::out);
+      ss << rounded;
+		json_object_set_new(j_cov_hist, labelSS.str().c_str(), json_string( ss.str().c_str() ));
 	}
 	json_object_set_new(jsonRootObj, "coverage_hist:", j_cov_hist);
 }
