@@ -40,6 +40,11 @@ HistogramStatsCollector::HistogramStatsCollector(unsigned int skipFactor) :
 	_pileupEngine = new BamTools::PileupEngine;
 	_readDepthHistVisitor = new CoverageHistogramVisitor(m_covHist, m_covHistLocs);
 	_pileupEngine->AddVisitor(_readDepthHistVisitor);
+
+	memset(m_mappingQualHist, 0, sizeof(unsigned int) * 256);
+
+	m_lengthHist.clear();
+	m_fragHist.clear();
 }
 
 HistogramStatsCollector::~HistogramStatsCollector() {
