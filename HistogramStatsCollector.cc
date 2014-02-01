@@ -1,4 +1,5 @@
 #include "HistogramStatsCollector.h"
+#include <cmath>
 
 namespace BamstatsAlive {
 
@@ -41,6 +42,7 @@ HistogramStatsCollector::HistogramStatsCollector(unsigned int skipFactor) :
 	_pileupEngine->AddVisitor(_readDepthHistVisitor);
 
 	memset(m_mappingQualHist, 0, sizeof(unsigned int) * 256);
+   memset(m_baseQualHist, 0, sizeof(unsigned int) * 51);
 
 	m_lengthHist.clear();
 	m_fragHist.clear();
@@ -52,6 +54,7 @@ HistogramStatsCollector::~HistogramStatsCollector() {
 }
 
 void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
+
     // increment ref aln counter
     if ( al.RefID != -1) m_refAlnHist[ refVector[al.RefID].RefName ]++;
     
@@ -61,7 +64,7 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
     	m_lengthHist[al.Length]++;
     else
     	m_lengthHist[al.Length] = 1;
-    
+
 	// if alignment is paired-end
 	if ( al.IsPaired() && al.IsMapped() && al.IsMateMapped()) {
 		if( al.RefID == al.MateRefID && al.MatePosition > al.Position )  {
@@ -73,7 +76,17 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
 		}                   
 	}
 
-	if(m_covHistAccumu == 0 && _pileupEngine) _pileupEngine->AddAlignment(al);
+	if(m_covHistAccumu == 0 && _pileupEngine) {
+	   // add base quality histogram
+      const char *q = al.Qualities.c_str();
+      if (q[0] != 0xff) {
+         for (int i = 0; i < al.Qualities.length(); ++i) {
+            unsigned int qual = (unsigned int)(q[i]) - 33;
+            m_baseQualHist[qual]++;
+         }
+      }
+	   _pileupEngine->AddAlignment(al);
+   }
 }
 
 void HistogramStatsCollector::appendJsonImpl(json_t *jsonRootObj) {
@@ -111,6 +124,16 @@ void HistogramStatsCollector::appendJsonImpl(json_t *jsonRootObj) {
 		}
 	}
 	json_object_set_new(jsonRootObj, "mapq_hist", j_mapq_hist);
+	
+	// Base quality map
+   json_t * j_baseq_hist = json_object();
+   for(size_t i=0; i<=50; i++) {
+      if (m_baseQualHist[i] > 0) {
+         stringstream labelSS; labelSS << i;
+         json_object_set_new(j_baseq_hist, labelSS.str().c_str(), json_integer(m_baseQualHist[i]));
+      }
+   }
+   json_object_set_new(jsonRootObj, "baseq_hist", j_baseq_hist);  
 
 	// Fragment length hisogram array
 	json_t * j_frag_hist = json_object();
@@ -140,7 +163,10 @@ void HistogramStatsCollector::appendJsonImpl(json_t *jsonRootObj) {
 	json_t * j_cov_hist = json_object();
 	for(_CoverageHistogramT::const_iterator it = m_covHist.begin(); it != m_covHist.end(); it++) {
 		stringstream labelSS; labelSS << it->first;
-		json_object_set_new(j_cov_hist, labelSS.str().c_str(), json_real(it->second / static_cast<double>(m_covHistLocs)));
+      double rounded = floor( (it->second / static_cast<double>(m_covHistLocs)) * 1000) / 1000;
+      std::stringstream ss(stringstream::in | stringstream::out);
+      ss << rounded;
+		json_object_set_new(j_cov_hist, labelSS.str().c_str(), json_string( ss.str().c_str() ));
 	}
-	json_object_set_new(jsonRootObj, "coverage_hist:", j_cov_hist);
+	json_object_set_new(jsonRootObj, "coverage_hist", j_cov_hist);
 }
