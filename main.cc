@@ -3,8 +3,6 @@
 #include "HistogramStatsCollector.h"
 #include "CoverageMapStatsCollector.h"
 
-#include <memory>
-
 static unsigned int totalReads;
 static unsigned int updateRate;
 
@@ -70,17 +68,17 @@ int main(int argc, char* argv[]) {
 	//         See: http://www.cplusplus.com/reference/memory/unique_ptr/
 
 	// Basic Scalar Statistics
-	unique_ptr<BasicStatsCollector> bsc(new BasicStatsCollector());
+	BasicStatsCollector bsc;
 
 	// Histogram Statistics
-	unique_ptr<HistogramStatsCollector> hsc(new HistogramStatsCollector());
-	bsc->addChild(hsc.get());
+	HistogramStatsCollector hsc(10);
+	bsc.addChild(&hsc);
 
 	// Coverage Map Statistics, only when regionLength is greater than 0
-	unique_ptr<CoverageMapStatsCollector> csc;
+	CoverageMapStatsCollector * csc = NULL;
 	if(regionLength != 0) {
-		csc.reset(new CoverageMapStatsCollector(regionStart, regionLength));
-		bsc->addChild(csc.get());
+		csc = new CoverageMapStatsCollector(regionStart, regionLength);
+		bsc.addChild(csc);
 	}
 
 	/* Process read alignments */
@@ -89,12 +87,14 @@ int main(int argc, char* argv[]) {
 	const BamTools::RefVector refVector = reader.GetReferenceData();
 	while(reader.GetNextAlignment(alignment)) {
 		totalReads++;
-		bsc->processAlignment(alignment, refVector);
+		bsc.processAlignment(alignment, refVector);
 		if(totalReads > 0 && totalReads % updateRate == 0)
-			printStatsJansson(*bsc);
+			printStatsJansson(bsc);
 	}
 
-	printStatsJansson(*bsc);
+	printStatsJansson(bsc);
+
+	if(csc) delete csc;
 }
 
 void printStatsJansson(AbstractStatCollector& rootStatCollector) {

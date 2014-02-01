@@ -1,4 +1,4 @@
-CFLAGS=-I$(BAMTOOLS)/src -I$(BAMTOOLS) -Ilib/jansson-2.5/src -g
+CFLAGS=-I$(BAMTOOLS)/src -I$(BAMTOOLS) -Ilib/jansson-2.5/src
 LDFLAGS=-L$(BAMTOOLS)/lib -lbamtools
 
 .SUFFIXES: .cc
@@ -18,7 +18,13 @@ OBJECTS=main.o \
 
 STATLIBS=lib/jansson-2.5/src/.libs/libjansson.a
 
-all: bamstatsAlive
+all: release
+
+debug: CFLAGS += -DDEBUG -g -pg
+debug: bamstatsAlive
+
+release: CFLAGS += -DRELEASE -O2
+release: bamstatsAlive
 
 clean:
 	rm -rf *.o *.dSYM bamstatsAlive bamstatsAliveCommon.hpp.gch

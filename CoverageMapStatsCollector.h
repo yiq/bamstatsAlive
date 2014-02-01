@@ -14,7 +14,7 @@ namespace BamstatsAlive {
 			unsigned int regionStart;
 			unsigned int regionLength;
 
-			std::unique_ptr<BamTools::PileupEngine> pileupEngine;
+			BamTools::PileupEngine * pileupEngine;
 			BamTools::PileupVisitor * visitor;
 
 			virtual void processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector);
