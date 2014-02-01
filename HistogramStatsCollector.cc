@@ -42,7 +42,7 @@ HistogramStatsCollector::HistogramStatsCollector(unsigned int skipFactor) :
 	_pileupEngine->AddVisitor(_readDepthHistVisitor);
 
 	memset(m_mappingQualHist, 0, sizeof(unsigned int) * 256);
-   memset(m_baseQualHist, 0, sizeof(unsigned int) * 50);
+   memset(m_baseQualHist, 0, sizeof(unsigned int) * 51);
 
 	m_lengthHist.clear();
 	m_fragHist.clear();
