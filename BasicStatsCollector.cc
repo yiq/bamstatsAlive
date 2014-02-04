@@ -8,6 +8,9 @@ static const unsigned int kCMTrailLength = 5;
 static const double kCMThreshold = 0.001;
 
 BasicStatsCollector::BasicStatsCollector() {
+
+	_stats.clear();
+
 	_stats[kTotalReads] = 0;
 	_stats[kMappedReads] = 0;
 	_stats[kForwardStrands] = 0;
@@ -20,8 +23,8 @@ BasicStatsCollector::BasicStatsCollector() {
 	_stats[kFirstMates] = 0;
 	_stats[kSecondMates] = 0;
 	_stats[kSingletons] = 0;
+	_stats[kLastReadPos] = 0;
 
-	_stats.clear();
 
 	StatMapT::iterator iter;
 	for(iter = _stats.begin(); iter != _stats.end(); iter++) {
@@ -45,6 +48,8 @@ BasicStatsCollector::BasicStatsCollector() {
 void BasicStatsCollector::processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
 	// increment total alignment counter
 	++_stats[kTotalReads];
+
+	_stats[kLastReadPos] = al.Position;
 
 	// incrememt counters for pairing-independent flags
 	if ( al.IsDuplicate() ) ++_stats[kDuplicates];

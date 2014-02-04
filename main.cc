@@ -5,6 +5,7 @@
 
 static unsigned int totalReads;
 static unsigned int updateRate;
+static unsigned int firstUpdateRate;
 
 static unsigned int regionStart;
 static unsigned int regionLength;
@@ -19,6 +20,7 @@ int main(int argc, char* argv[]) {
 	
 	string filename;
 	updateRate = 1000;
+	firstUpdateRate = 0;
 
 	/* process the parameters */
 	
@@ -28,7 +30,7 @@ int main(int argc, char* argv[]) {
 	 */
 
 	int ch;
-	while((ch = getopt(argc, argv, "u:s:l:")) != -1) {
+	while((ch = getopt(argc, argv, "u:f:s:l:")) != -1) {
 		switch(ch) {
 			case 'u':
 				updateRate = atoi(optarg);
@@ -38,6 +40,9 @@ int main(int argc, char* argv[]) {
 				break;
 			case 'l':
 				regionLength = atoi(optarg);
+				break;
+			case 'f':
+				firstUpdateRate = atoi(optarg);
 				break;
 		}
 	}
@@ -88,8 +93,15 @@ int main(int argc, char* argv[]) {
 	while(reader.GetNextAlignment(alignment)) {
 		totalReads++;
 		bsc.processAlignment(alignment, refVector);
-		if(totalReads > 0 && totalReads % updateRate == 0)
+		if((totalReads > 0 && totalReads % updateRate == 0) ||
+		   (firstUpdateRate>0 && totalReads >= firstUpdateRate)) {
+			
 			printStatsJansson(bsc);
+
+			// disable first update after it has been fired.
+			if(firstUpdateRate > 0) firstUpdateRate = 0;
+
+		}
 	}
 
 	printStatsJansson(bsc);
