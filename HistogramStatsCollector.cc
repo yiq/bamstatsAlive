@@ -78,7 +78,7 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
 
 	if(m_covHistAccumu == 0 && _pileupEngine) {
 	   // add base quality histogram
-      const char *q = al.Qualities.c_str();
+      const unsigned char *q = (const unsigned char *)al.Qualities.c_str();
       if (q[0] != 0xff) {
          for (int i = 0; i < al.Qualities.length(); ++i) {
             unsigned int qual = (unsigned int)(q[i]) - 33;

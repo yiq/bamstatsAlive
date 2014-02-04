@@ -20,6 +20,7 @@ namespace BamstatsAlive {
 	static std::string const kSingletons = "singletons";
 	static std::string const kFailedQC = "failed_qc";
 	static std::string const kDuplicates = "duplicates";
+	static std::string const kLastReadPos = "last_read_position";
 
 	typedef std::map<std::string, unsigned int> StatMapT;
 	typedef std::map<std::string, AbstractChangeMonitor<double> *> ChangeMonitorMapT;
