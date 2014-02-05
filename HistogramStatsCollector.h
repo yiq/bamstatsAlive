@@ -14,7 +14,7 @@ namespace BamstatsAlive {
 	class HistogramStatsCollector : public AbstractStatCollector {
 		protected:
 			unsigned int m_mappingQualHist[256];
-         unsigned int m_baseQualHist[50];
+			unsigned int m_baseQualHist[51];
 			std::map<int32_t, unsigned int> m_fragHist;
 			std::map<int32_t, unsigned int> m_lengthHist;
 			std::map<std::string, unsigned int> m_refAlnHist;
