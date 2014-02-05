@@ -68,7 +68,7 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
 	// if alignment is paired-end
 	if ( al.IsPaired() && al.IsMapped() && al.IsMateMapped()) {
 		if( al.RefID == al.MateRefID && al.MatePosition > al.Position )  {
-			unsigned int frag = al.InsertSize; //al.MatePosition - al.Position;
+			int32_t frag = al.InsertSize; //al.MatePosition - al.Position;
 			if(m_fragHist.find(frag) != m_fragHist.end())
 				m_fragHist[frag]++;
 			else
