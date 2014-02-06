@@ -19,6 +19,9 @@ namespace BamstatsAlive {
 
 			void Visit(const BamTools::PileupPosition& pileupData) {
 				size_t s = pileupData.PileupAlignments.size();
+
+				LOGS<<"PileupVisit: "<<pileupData.Position<<", coverage: "<<s<<std::endl;
+
 				_CoverageHistogramT::iterator iter = _histogram.find(s);
 
 				if(iter == _histogram.end()) 	_histogram[s] = 1;
@@ -31,18 +34,22 @@ namespace BamstatsAlive {
 using namespace BamstatsAlive;
 using namespace std;
 
-HistogramStatsCollector::HistogramStatsCollector(unsigned int skipFactor) : 
+HistogramStatsCollector::HistogramStatsCollector(std::map<int32_t, std::string>& chromIDNameMap, unsigned int skipFactor, GenomicRegionStore* regionStore) : 
+	_chromIDNameMap(chromIDNameMap),
 	kCovHistSkipFactor(skipFactor), 
 	m_covHistLocs(0), 
-	m_covHistAccumu(0) 
+	m_covHistAccumu(0),
+	_currentRegion(NULL),
+	_regionStore(regionStore)
 {
 
 	_pileupEngine = new BamTools::PileupEngine;
 	_readDepthHistVisitor = new CoverageHistogramVisitor(m_covHist, m_covHistLocs);
 	_pileupEngine->AddVisitor(_readDepthHistVisitor);
 
+
 	memset(m_mappingQualHist, 0, sizeof(unsigned int) * 256);
-   memset(m_baseQualHist, 0, sizeof(unsigned int) * 51);
+	memset(m_baseQualHist, 0, sizeof(unsigned int) * 51);
 
 	m_lengthHist.clear();
 	m_fragHist.clear();
@@ -85,7 +92,33 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
             m_baseQualHist[qual]++;
          }
       }
-	   _pileupEngine->AddAlignment(al);
+
+	  if(_currentRegion)
+		  LOGS<<">> Looking at read "<<al.Name<<", "<<al.Position<<" - "<<al.Position + al.Length<<std::endl;
+	  else
+		  LOGS<<"!! Looking at read "<<al.Name<<", "<<al.Position<<" - "<<al.Position + al.Length<<std::endl;
+
+	  if(_currentRegion == NULL && _regionStore) {
+		  // try to identify the region of this read
+		  const GenomicRegionStore::GenomicRegionT& regionWithStart = _regionStore->locateRegion(_chromIDNameMap[al.RefID].c_str(), al.Position);
+		  if(&regionWithStart != &GenomicRegionStore::kRegionNotFound()) {
+			  _currentRegion = &regionWithStart;
+		  }
+		  else {
+			  const GenomicRegionStore::GenomicRegionT& regionWithEnd = _regionStore->locateRegion(_chromIDNameMap[al.RefID].c_str(), al.Position + al.Length);
+			  if(&regionWithEnd != &GenomicRegionStore::kRegionNotFound()) _currentRegion = &regionWithEnd;
+		  }
+	  }
+
+	  // check if active region is in place
+	  if(_currentRegion) {
+		  if(_currentRegion->contains(_chromIDNameMap[al.RefID].c_str(), al.Position) || _currentRegion->contains(_chromIDNameMap[al.RefID].c_str(), al.Position + al.Length))
+			  _pileupEngine->AddAlignment(al);
+	  }
+	  else {
+		  // if somehow there is no active region, yet pileupEngine is active, feed the read anyway
+		  if(_regionStore == NULL) _pileupEngine->AddAlignment(al);
+	  }
    }
 }
 
@@ -109,6 +142,11 @@ void HistogramStatsCollector::appendJsonImpl(json_t *jsonRootObj) {
 				_pileupEngine->Flush();
 				delete _pileupEngine;
 				_pileupEngine = NULL;
+
+				// Disable current region, so that next time pileup engine is on,
+				// current region can be recalculated based on new reads
+				if(_currentRegion)
+					_currentRegion = NULL;
 			}
 		}
 	} else {

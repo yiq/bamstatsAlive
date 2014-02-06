@@ -34,4 +34,19 @@
 // Jansson JSON manipulation library
 #include <jansson.h>
 
+
+// Logging facility for Debug
+#ifdef RELEASE
+namespace BamstatsAlive {
+	namespace Log {
+		static std::ostream bitBucket(0);
+	}
+}
+#define LOGS (Log::bitBucket)
+#endif
+
+#ifdef DEBUG
+#define LOGS (std::cerr)
+#endif
+
 #endif

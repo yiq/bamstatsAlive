@@ -6,6 +6,8 @@
 static unsigned int totalReads;
 static unsigned int updateRate;
 static unsigned int firstUpdateRate;
+static std::string regionJson;
+static bool hasRegionSpec = false;
 
 static unsigned int regionStart;
 static unsigned int regionLength;
@@ -30,7 +32,7 @@ int main(int argc, char* argv[]) {
 	 */
 
 	int ch;
-	while((ch = getopt(argc, argv, "u:f:s:l:")) != -1) {
+	while((ch = getopt(argc, argv, "u:f:s:l:r:")) != -1) {
 		switch(ch) {
 			case 'u':
 				updateRate = atoi(optarg);
@@ -43,6 +45,10 @@ int main(int argc, char* argv[]) {
 				break;
 			case 'f':
 				firstUpdateRate = atoi(optarg);
+				break;
+			case 'r':
+				regionJson = std::string(optarg);
+				hasRegionSpec = true;
 				break;
 		}
 	}
@@ -65,6 +71,12 @@ int main(int argc, char* argv[]) {
 		exit(1);
 	}
 
+	const BamTools::RefVector refVector = reader.GetReferenceData();
+
+	map<int32_t, string> chromIDNameMap;
+	for(size_t i=0; i<refVector.size(); i++) {
+		chromIDNameMap[reader.GetReferenceID(refVector[i].RefName)] = refVector[i].RefName;
+	}
 
 	/* Construct the statistics collectors */
 
@@ -74,10 +86,28 @@ int main(int argc, char* argv[]) {
 
 	// Basic Scalar Statistics
 	BasicStatsCollector bsc;
+	HistogramStatsCollector* hsc = NULL;
+	GenomicRegionStore *regionStore = NULL;
 
 	// Histogram Statistics
-	HistogramStatsCollector hsc(10);
-	bsc.addChild(&hsc);
+	if(hasRegionSpec) {
+		LOGS<<"Has Region Spec"<<std::endl;
+		try {
+			regionStore = new GenomicRegionStore(regionJson);
+			LOGS<<regionStore->regions().size()<<" Regions specified"<<endl;
+			hsc = new HistogramStatsCollector(chromIDNameMap, 10, regionStore);
+
+		}
+		catch(...) {
+			cout<<"{\"statis\":\"error\", \"message\":\"Cannot parse region json string\"}"<<endl;
+			exit(1);
+		}
+	}
+	else {
+		LOGS<<"Does not have region spec"<<std::endl;
+		hsc = new HistogramStatsCollector(chromIDNameMap, 10);
+	}
+	bsc.addChild(hsc);
 
 	// Coverage Map Statistics, only when regionLength is greater than 0
 	CoverageMapStatsCollector * csc = NULL;
@@ -89,23 +119,24 @@ int main(int argc, char* argv[]) {
 	/* Process read alignments */
 
 	BamTools::BamAlignment alignment;
-	const BamTools::RefVector refVector = reader.GetReferenceData();
 	while(reader.GetNextAlignment(alignment)) {
 		totalReads++;
 		bsc.processAlignment(alignment, refVector);
 		if((totalReads > 0 && totalReads % updateRate == 0) ||
 		   (firstUpdateRate>0 && totalReads >= firstUpdateRate)) {
+
 			
 			printStatsJansson(bsc);
 
 			// disable first update after it has been fired.
 			if(firstUpdateRate > 0) firstUpdateRate = 0;
-
 		}
 	}
 
 	printStatsJansson(bsc);
 
+	if(hsc) delete hsc;
+	if(regionStore) delete regionStore;
 	if(csc) delete csc;
 }
 
