@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include<cstdint>
-#include<vector>
-#include<iostream>
+#include <stdint.h>
+#include <vector>
+#include <iostream>
 
 namespace BamstatsAlive {
 
@@ -15,8 +15,8 @@ namespace BamstatsAlive {
 		public:
 			typedef struct _regionT {
 				const char * chrom;
-				const int32_t startPos;
-				const int32_t endPos;
+				int32_t startPos;
+				int32_t endPos;
 
 				_regionT(const char *chrom, int32_t startPos, int32_t endPos) : 
 					chrom(NULL), startPos(startPos), endPos(endPos) 

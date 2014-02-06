@@ -1,4 +1,4 @@
-CFLAGS=-I$(BAMTOOLS)/src -I$(BAMTOOLS) -Ilib/jansson-2.5/src
+CFLAGS=-I$(BAMTOOLS)/src -I$(BAMTOOLS) -Ilib/jansson-2.5/src 
 LDFLAGS=-L$(BAMTOOLS)/lib -lbamtools
 
 .SUFFIXES: .cc
