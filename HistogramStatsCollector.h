@@ -4,6 +4,7 @@
 #pragma once
 
 #include "AbstractStatCollector.h"
+#include "GenomicRegionStore.h"
 
 namespace BamstatsAlive {
 
@@ -30,8 +31,19 @@ namespace BamstatsAlive {
 			virtual void processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector);
 			virtual void appendJsonImpl(json_t * jsonRootObj);
 
+		private:
+			// Functions to deal with intermitted base coverage calculation
+			const GenomicRegionStore::GenomicRegionT *_currentRegion;
+			GenomicRegionStore *_regionStore;
+			std::map<int32_t, std::string>& _chromIDNameMap;
+			void startBaseCoverageRegion();
+			void endBaseCoverageRegion();
+
 		public:
-			HistogramStatsCollector(unsigned int skipFactor = 0);
+			HistogramStatsCollector(
+					std::map<int32_t, std::string>& chromIDNameMap,
+					unsigned int skipFactor = 0, 
+					GenomicRegionStore* regionStore = NULL);
 			virtual ~HistogramStatsCollector();
 
 

@@ -7,14 +7,20 @@ SOURCES=main.cc \
 		AbstractStatCollector.cc \
 		BasicStatsCollector.cc \
 		HistogramStatsCollector.cc \
-		CoverageMapStatsCollector.cc
+		CoverageMapStatsCollector.cc \
+		GenomicRegionStore.cc
 
-OBJECTS=main.o \
-		AbstractStatCollector.o \
-		BasicStatsCollector.o \
-		HistogramStatsCollector.o \
-		CoverageMapStatsCollector.o \
-		bamtools_pileup_engine.o
+OBJECTS=$(SOURCES:.cc=.o)
+OBJECTS+=bamtools_pileup_engine.o 
+
+
+#OBJECTS=main.o \
+#		AbstractStatCollector.o \
+#		BasicStatsCollector.o \
+#		HistogramStatsCollector.o \
+#		CoverageMapStatsCollector.o \
+#		GenomicRegionStore.o \
+#		bamtools_pileup_engine.o 
 
 STATLIBS=lib/jansson-2.5/src/.libs/libjansson.a
 

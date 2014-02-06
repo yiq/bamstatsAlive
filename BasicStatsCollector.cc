@@ -26,10 +26,12 @@ BasicStatsCollector::BasicStatsCollector() {
 	_stats[kLastReadPos] = 0;
 
 
+#ifdef DEBUG
 	StatMapT::iterator iter;
 	for(iter = _stats.begin(); iter != _stats.end(); iter++) {
 		std::cerr<<"Initializing: "<<iter->first<<std::endl;
 	}
+#endif
 
 	_monitors.clear();
 	_monitors[kMappedReads] 		= new StandardDeviationChangeMonitor<double>(kCMTrailLength, kCMThreshold);
