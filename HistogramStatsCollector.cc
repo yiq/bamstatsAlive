@@ -153,58 +153,55 @@ void HistogramStatsCollector::appendJsonImpl(json_t *jsonRootObj) {
 		m_covHistAccumu = 0;
 	}
 
-	// Mapping quality map
-	json_t * j_mapq_hist = json_object();
-	for(size_t i=0; i<256; i++) {
-		if (m_mappingQualHist[i] > 0) {
-			stringstream labelSS; labelSS << i;
-			json_object_set_new(j_mapq_hist, labelSS.str().c_str(), json_integer(m_mappingQualHist[i]));
-		}
-	}
-	json_object_set_new(jsonRootObj, "mapq_hist", j_mapq_hist);
-	
-	// Base quality map
-   json_t * j_baseq_hist = json_object();
-   for(size_t i=0; i<=50; i++) {
-      if (m_baseQualHist[i] > 0) {
+   // Mapping quality map
+   json_t * j_mapq_hist = json_object();
+   for(size_t i=0; i<256; i++) {
+      if (m_mappingQualHist[i] > 0) {
          stringstream labelSS; labelSS << i;
-         json_object_set_new(j_baseq_hist, labelSS.str().c_str(), json_integer(m_baseQualHist[i]));
+         json_object_set_new(j_mapq_hist, labelSS.str().c_str(), json_integer(m_mappingQualHist[i]));
       }
    }
-   json_object_set_new(jsonRootObj, "baseq_hist", j_baseq_hist);  
-
-	// Fragment length hisogram array
-	json_t * j_frag_hist = json_object();
-	for(map<int32_t, unsigned int>::iterator it = m_fragHist.begin(); it!=m_fragHist.end(); it++) {
-		stringstream labelSS; labelSS<<it->first;
-		json_object_set_new(j_frag_hist, labelSS.str().c_str(), json_integer(it->second));
-	}
-	json_object_set_new(jsonRootObj, "frag_hist", j_frag_hist);
-
-	// Read length histogram array
-	json_t * j_length_hist = json_object();
-	for(map<int32_t, unsigned int>::iterator it = m_lengthHist.begin(); it!=m_lengthHist.end(); it++) {
-		stringstream labelSS; labelSS << it->first;
-		json_object_set_new(j_length_hist, labelSS.str().c_str(), json_integer(it->second));
-	}
-	json_object_set_new(jsonRootObj, "length_hist", j_length_hist);
-	
-	// Reference alignment histogram array
-	json_t * j_refAln_hist = json_object();
-	for(map<std::string, unsigned int>::iterator it = m_refAlnHist.begin(); it!=m_refAlnHist.end(); it++) {
-		stringstream labelSS; labelSS << it->first;
-		json_object_set_new(j_refAln_hist, labelSS.str().c_str(), json_integer(it->second));
-	}
-	json_object_set_new(jsonRootObj, "refAln_hist", j_refAln_hist);
+   json_object_set_new(jsonRootObj, "mapq_hist", j_mapq_hist);
+   
+   // Base quality map
+      json_t * j_baseq_hist = json_object();
+      for(size_t i=0; i<=50; i++) {
+         if (m_baseQualHist[i] > 0) {
+            stringstream labelSS; labelSS << i;
+            json_object_set_new(j_baseq_hist, labelSS.str().c_str(), json_integer(m_baseQualHist[i]));
+         }
+      }
+      json_object_set_new(jsonRootObj, "baseq_hist", j_baseq_hist);  
+   
+   // Fragment length hisogram array
+   json_t * j_frag_hist = json_object();
+   for(map<int32_t, unsigned int>::iterator it = m_fragHist.begin(); it!=m_fragHist.end(); it++) {
+      stringstream labelSS; labelSS<<it->first;
+      json_object_set_new(j_frag_hist, labelSS.str().c_str(), json_integer(it->second));
+   }
+   json_object_set_new(jsonRootObj, "frag_hist", j_frag_hist);
+   
+   // Read length histogram array
+   json_t * j_length_hist = json_object();
+   for(map<int32_t, unsigned int>::iterator it = m_lengthHist.begin(); it!=m_lengthHist.end(); it++) {
+      stringstream labelSS; labelSS << it->first;
+      json_object_set_new(j_length_hist, labelSS.str().c_str(), json_integer(it->second));
+   }
+   json_object_set_new(jsonRootObj, "length_hist", j_length_hist);
+   
+   // Reference alignment histogram array
+   json_t * j_refAln_hist = json_object();
+   for(map<std::string, unsigned int>::iterator it = m_refAlnHist.begin(); it!=m_refAlnHist.end(); it++) {
+      stringstream labelSS; labelSS << it->first;
+      json_object_set_new(j_refAln_hist, labelSS.str().c_str(), json_integer(it->second));
+   }
+   json_object_set_new(jsonRootObj, "refAln_hist", j_refAln_hist);
 
 	// Coverage Histogram
 	json_t * j_cov_hist = json_object();
 	for(_CoverageHistogramT::const_iterator it = m_covHist.begin(); it != m_covHist.end(); it++) {
 		stringstream labelSS; labelSS << it->first;
-      double rounded = floor( (it->second / static_cast<double>(m_covHistLocs)) * 1000) / 1000;
-      std::stringstream ss(stringstream::in | stringstream::out);
-      ss << rounded;
-		json_object_set_new(j_cov_hist, labelSS.str().c_str(), json_string( ss.str().c_str() ));
+		json_object_set_new(j_cov_hist, labelSS.str().c_str(), json_real( it->second / static_cast<double>(m_covHistLocs)));
 	}
 	json_object_set_new(jsonRootObj, "coverage_hist", j_cov_hist);
 }
