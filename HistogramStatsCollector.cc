@@ -8,17 +8,39 @@ namespace BamstatsAlive {
 
 		_CoverageHistogramT& _histogram;
 		unsigned int& _locs;
+		bool hasSeenFirst;
+		unsigned int lastLoc;
+
+		const GenomicRegionStore::GenomicRegionT * _currentRegion;
 
 		public:
 
 			CoverageHistogramVisitor(_CoverageHistogramT& covHist, unsigned int& locs) 
-				: BamTools::PileupVisitor(), _histogram(covHist), _locs(locs) {
+				: BamTools::PileupVisitor(), 
+				_histogram(covHist), 
+				_locs(locs), 
+				lastLoc(0),
+				hasSeenFirst(false) {
 
-				;
+					;
+				}
+
+			void SetRegion(const GenomicRegionStore::GenomicRegionT * region) {
+				_currentRegion = region;
+				hasSeenFirst = false;
 			}
 
 			void Visit(const BamTools::PileupPosition& pileupData) {
+
+				if(!hasSeenFirst && _currentRegion != NULL) {
+					int32_t prefixGapSize = pileupData.Position - _currentRegion->startPos;
+					if(prefixGapSize >= 0)
+						_histogram[0] += prefixGapSize;
+					hasSeenFirst = true;
+				}
+
 				size_t s = pileupData.PileupAlignments.size();
+				lastLoc = pileupData.Position;
 
 				LOGS<<"PileupVisit: "<<pileupData.Position<<", coverage: "<<s<<std::endl;
 
@@ -27,6 +49,13 @@ namespace BamstatsAlive {
 				if(iter == _histogram.end()) 	_histogram[s] = 1;
 				else 							_histogram[s]++;
 				_locs++;
+			}
+
+			void FlushRegion() {
+				if(_currentRegion == NULL) return;
+				int32_t postfixGapSize = _currentRegion->endPos - lastLoc;
+				if(postfixGapSize >= 0)
+					_histogram[0] += postfixGapSize;
 			}
 	};
 }
@@ -89,7 +118,9 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
       if (q[0] != 0xff) {
          for (int i = 0; i < al.Qualities.length(); ++i) {
             unsigned int qual = (unsigned int)(q[i]) - 33;
+			if(qual >50) qual = 50;
             m_baseQualHist[qual]++;
+
          }
       }
 
@@ -108,6 +139,7 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
 			  const GenomicRegionStore::GenomicRegionT& regionWithEnd = _regionStore->locateRegion(_chromIDNameMap[al.RefID].c_str(), al.Position + al.Length);
 			  if(&regionWithEnd != &GenomicRegionStore::kRegionNotFound()) _currentRegion = &regionWithEnd;
 		  }
+		  _readDepthHistVisitor->SetRegion(_currentRegion);
 	  }
 
 	  // check if active region is in place
@@ -140,6 +172,7 @@ void HistogramStatsCollector::appendJsonImpl(json_t *jsonRootObj) {
 				// if just finished a round of piling up
 
 				_pileupEngine->Flush();
+				_readDepthHistVisitor->FlushRegion();
 				delete _pileupEngine;
 				_pileupEngine = NULL;
 
