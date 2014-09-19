@@ -37,8 +37,10 @@ namespace BamstatsAlive {
 				if(_currentRegion != NULL && hasRegionBeenConsidered.find(_currentRegion) == hasRegionBeenConsidered.end()) {
 					int32_t prefixGapSize = pileupData.Position - _currentRegion->startPos;
 					LOGS<<"First position in a region, with "<<prefixGapSize<<" prefix gap size"<<std::endl;
-					if(prefixGapSize >= 0)
+					if(prefixGapSize >= 0) {
 						_histogram[0] += prefixGapSize * 2;
+						_locs += prefixGapSize * 2;
+					}
 					hasRegionBeenConsidered[_currentRegion] = true;
 				}
 
@@ -52,14 +54,6 @@ namespace BamstatsAlive {
 				if(iter == _histogram.end()) 	_histogram[s] = 1;
 				else 							_histogram[s]++;
 				_locs++;
-			}
-
-			void FlushRegion() {
-				//if(_currentRegion == NULL) return;
-				//int32_t postfixGapSize = _currentRegion->endPos - lastLoc;
-				//LOGS<<"Flushing region with "<<postfixGapSize<<" postfix gap size"<<std::endl;
-				//if(postfixGapSize >= 0)
-				//	_histogram[0] += postfixGapSize;
 			}
 	};
 }
@@ -118,14 +112,16 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
 
 
 	const GenomicRegionStore::GenomicRegionT * readRegion = NULL;
-	const GenomicRegionStore::GenomicRegionT& readRegionStart = _regionStore->locateRegion(_chromIDNameMap[al.RefID].c_str(), al.Position);
-	if(&readRegionStart != &GenomicRegionStore::kRegionNotFound()) {
-		readRegion = &readRegionStart;
-	}
-	else {
-		const GenomicRegionStore::GenomicRegionT& readRegionEnd = _regionStore->locateRegion(_chromIDNameMap[al.RefID].c_str(), al.Position + al.Length);
-		if(&readRegionEnd != &GenomicRegionStore::kRegionNotFound()) {
-			readRegion = &readRegionEnd;
+	if(_regionStore != NULL) {
+		const GenomicRegionStore::GenomicRegionT& readRegionStart = _regionStore->locateRegion(_chromIDNameMap[al.RefID].c_str(), al.Position);
+		if(&readRegionStart != &GenomicRegionStore::kRegionNotFound()) {
+			readRegion = &readRegionStart;
+		}
+		else {
+			const GenomicRegionStore::GenomicRegionT& readRegionEnd = _regionStore->locateRegion(_chromIDNameMap[al.RefID].c_str(), al.Position + al.Length);
+			if(&readRegionEnd != &GenomicRegionStore::kRegionNotFound()) {
+				readRegion = &readRegionEnd;
+			}
 		}
 	}
 
@@ -135,45 +131,44 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
 
 
 	if(m_covHistAccumu == 0 && _pileupEngine) {
-	   // add base quality histogram
-      const unsigned char *q = (const unsigned char *)al.Qualities.c_str();
-      if (q[0] != 0xff) {
-         for (int i = 0; i < al.Qualities.length(); ++i) {
-            unsigned int qual = (unsigned int)(q[i]) - 33;
-			if(qual >50) qual = 50;
-            m_baseQualHist[qual]++;
+		// add base quality histogram
+		const unsigned char *q = (const unsigned char *)al.Qualities.c_str();
+		if (q[0] != 0xff) {
+			for (int i = 0; i < al.Qualities.length(); ++i) {
+				unsigned int qual = (unsigned int)(q[i]) - 33;
+				if(qual >50) qual = 50;
+				m_baseQualHist[qual]++;
+			}
+		}
 
-         }
-      }
+		if(_currentRegion == NULL && _regionStore) {
+			// try to identify the region of this read
+			const GenomicRegionStore::GenomicRegionT& regionWithStart = _regionStore->locateRegion(_chromIDNameMap[al.RefID].c_str(), al.Position);
+			if(&regionWithStart != &GenomicRegionStore::kRegionNotFound()) {
+				_currentRegion = &regionWithStart;
+			}
+			else {
+				const GenomicRegionStore::GenomicRegionT& regionWithEnd = _regionStore->locateRegion(_chromIDNameMap[al.RefID].c_str(), al.Position + al.Length);
+				if(&regionWithEnd != &GenomicRegionStore::kRegionNotFound()) _currentRegion = &regionWithEnd;
+			}
+			_readDepthHistVisitor->SetRegion(_currentRegion);
+		}
 
-	  if(_currentRegion)
-		  LOGS<<">> Looking at read "<<al.Name<<", "<<al.Position<<" - "<<al.Position + al.Length<<std::endl;
-	  else
-		  LOGS<<"!! Looking at read "<<al.Name<<", "<<al.Position<<" - "<<al.Position + al.Length<<std::endl;
+		if(_currentRegion)
+			LOGS<<">> Looking at read "<<al.Name<<", "<<al.Position<<" - "<<al.Position + al.Length<<std::endl;
+		else
+			LOGS<<"!! Looking at read "<<al.Name<<", "<<al.Position<<" - "<<al.Position + al.Length<<std::endl;
 
-	  if(_currentRegion == NULL && _regionStore) {
-		  // try to identify the region of this read
-		  const GenomicRegionStore::GenomicRegionT& regionWithStart = _regionStore->locateRegion(_chromIDNameMap[al.RefID].c_str(), al.Position);
-		  if(&regionWithStart != &GenomicRegionStore::kRegionNotFound()) {
-			  _currentRegion = &regionWithStart;
-		  }
-		  else {
-			  const GenomicRegionStore::GenomicRegionT& regionWithEnd = _regionStore->locateRegion(_chromIDNameMap[al.RefID].c_str(), al.Position + al.Length);
-			  if(&regionWithEnd != &GenomicRegionStore::kRegionNotFound()) _currentRegion = &regionWithEnd;
-		  }
-		  _readDepthHistVisitor->SetRegion(_currentRegion);
-	  }
-
-	  // check if active region is in place
-	  if(_currentRegion) {
-		  if(_currentRegion->contains(_chromIDNameMap[al.RefID].c_str(), al.Position) || _currentRegion->contains(_chromIDNameMap[al.RefID].c_str(), al.Position + al.Length))
-			  _pileupEngine->AddAlignment(al);
-	  }
-	  else {
-		  // if somehow there is no active region, yet pileupEngine is active, feed the read anyway
-		  if(_regionStore == NULL) _pileupEngine->AddAlignment(al);
-	  }
-   }
+		// check if active region is in place
+		if(_currentRegion) {
+			if(_currentRegion->contains(_chromIDNameMap[al.RefID].c_str(), al.Position) || _currentRegion->contains(_chromIDNameMap[al.RefID].c_str(), al.Position + al.Length))
+				_pileupEngine->AddAlignment(al);
+		}
+		else {
+			// if somehow there is no active region, yet pileupEngine is active, feed the read anyway
+			if(_regionStore == NULL) _pileupEngine->AddAlignment(al);
+		}
+	}
 }
 
 void HistogramStatsCollector::flushAllRegion() {
@@ -187,6 +182,7 @@ void HistogramStatsCollector::flushAllRegion() {
 			LOGS << " does not have read, counting 0s"<<std::endl;
 
 			m_covHist[0] += (it->endPos - it->startPos);
+			m_covHistLocs += (it->endPos - it->startPos);
 		}
 	}
 }
@@ -209,7 +205,6 @@ void HistogramStatsCollector::appendJsonImpl(json_t *jsonRootObj) {
 				// if just finished a round of piling up
 
 				_pileupEngine->Flush();
-				_readDepthHistVisitor->FlushRegion();
 				delete _pileupEngine;
 				_pileupEngine = NULL;
 

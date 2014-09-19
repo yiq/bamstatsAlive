@@ -124,7 +124,6 @@ int main(int argc, char* argv[]) {
 		bsc.processAlignment(alignment, refVector);
 		if((totalReads > 0 && totalReads % updateRate == 0) ||
 		   (firstUpdateRate>0 && totalReads >= firstUpdateRate)) {
-
 			
 			printStatsJansson(bsc);
 
@@ -133,6 +132,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
+	// count for all regions from which no read came
 	hsc->flushAllRegion();
 
 	printStatsJansson(bsc);
