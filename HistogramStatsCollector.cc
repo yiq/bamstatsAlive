@@ -3,6 +3,8 @@
 
 namespace BamstatsAlive {
 
+	static std::map<const GenomicRegionStore::GenomicRegionT *, bool> hasRegionBeenConsidered;
+	static std::map<const GenomicRegionStore::GenomicRegionT *, bool> isRegionContainingReads;
 
 	class CoverageHistogramVisitor : public BamTools::PileupVisitor {
 
@@ -32,11 +34,12 @@ namespace BamstatsAlive {
 
 			void Visit(const BamTools::PileupPosition& pileupData) {
 
-				if(!hasSeenFirst && _currentRegion != NULL) {
+				if(_currentRegion != NULL && hasRegionBeenConsidered.find(_currentRegion) == hasRegionBeenConsidered.end()) {
 					int32_t prefixGapSize = pileupData.Position - _currentRegion->startPos;
+					LOGS<<"First position in a region, with "<<prefixGapSize<<" prefix gap size"<<std::endl;
 					if(prefixGapSize >= 0)
-						_histogram[0] += prefixGapSize;
-					hasSeenFirst = true;
+						_histogram[0] += prefixGapSize * 2;
+					hasRegionBeenConsidered[_currentRegion] = true;
 				}
 
 				size_t s = pileupData.PileupAlignments.size();
@@ -52,10 +55,11 @@ namespace BamstatsAlive {
 			}
 
 			void FlushRegion() {
-				if(_currentRegion == NULL) return;
-				int32_t postfixGapSize = _currentRegion->endPos - lastLoc;
-				if(postfixGapSize >= 0)
-					_histogram[0] += postfixGapSize;
+				//if(_currentRegion == NULL) return;
+				//int32_t postfixGapSize = _currentRegion->endPos - lastLoc;
+				//LOGS<<"Flushing region with "<<postfixGapSize<<" postfix gap size"<<std::endl;
+				//if(postfixGapSize >= 0)
+				//	_histogram[0] += postfixGapSize;
 			}
 	};
 }
@@ -112,6 +116,24 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
 		}                   
 	}
 
+
+	const GenomicRegionStore::GenomicRegionT * readRegion = NULL;
+	const GenomicRegionStore::GenomicRegionT& readRegionStart = _regionStore->locateRegion(_chromIDNameMap[al.RefID].c_str(), al.Position);
+	if(&readRegionStart != &GenomicRegionStore::kRegionNotFound()) {
+		readRegion = &readRegionStart;
+	}
+	else {
+		const GenomicRegionStore::GenomicRegionT& readRegionEnd = _regionStore->locateRegion(_chromIDNameMap[al.RefID].c_str(), al.Position + al.Length);
+		if(&readRegionEnd != &GenomicRegionStore::kRegionNotFound()) {
+			readRegion = &readRegionEnd;
+		}
+	}
+
+	if(readRegion != NULL) {
+		isRegionContainingReads[readRegion] = true;
+	}
+
+
 	if(m_covHistAccumu == 0 && _pileupEngine) {
 	   // add base quality histogram
       const unsigned char *q = (const unsigned char *)al.Qualities.c_str();
@@ -152,6 +174,21 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
 		  if(_regionStore == NULL) _pileupEngine->AddAlignment(al);
 	  }
    }
+}
+
+void HistogramStatsCollector::flushAllRegion() {
+	if(_regionStore) {
+		for(std::vector<GenomicRegionStore::GenomicRegionT>::const_iterator it = _regionStore->regions().begin(); it!=_regionStore->regions().end(); it++) {
+			LOGS<<"REGION "<<it->startPos<<" -- "<<it->endPos;
+			if(isRegionContainingReads.find(&(*it)) != isRegionContainingReads.end()) {
+				LOGS <<" has read, skipping" <<std::endl;
+				continue;
+			}
+			LOGS << " does not have read, counting 0s"<<std::endl;
+
+			m_covHist[0] += (it->endPos - it->startPos);
+		}
+	}
 }
 
 void HistogramStatsCollector::appendJsonImpl(json_t *jsonRootObj) {

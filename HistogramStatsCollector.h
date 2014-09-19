@@ -46,6 +46,8 @@ namespace BamstatsAlive {
 					GenomicRegionStore* regionStore = NULL);
 			virtual ~HistogramStatsCollector();
 
+			void flushAllRegion();
+
 
 	};
 }

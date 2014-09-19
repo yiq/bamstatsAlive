@@ -133,6 +133,8 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
+	hsc->flushAllRegion();
+
 	printStatsJansson(bsc);
 
 	if(hsc) delete hsc;
