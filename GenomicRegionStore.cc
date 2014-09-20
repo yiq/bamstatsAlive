@@ -51,7 +51,7 @@ const GenomicRegionStore::GenomicRegionT& GenomicRegionStore::kRegionNotFound() 
 
 const GenomicRegionStore::GenomicRegionT& GenomicRegionStore::locateRegion(const char *chrom, int32_t pos) {
 
-	std::vector<GenomicRegionT>::iterator it;
+	GenomicRegionVec::iterator it;
 	for(it = _regions.begin(); it != _regions.end(); it++) {
 		if(it->contains(chrom, pos))
 			return *it;

@@ -4,7 +4,7 @@
 namespace BamstatsAlive {
 
 	static std::map<const GenomicRegionStore::GenomicRegionT *, bool> hasRegionBeenConsidered;
-	static std::map<const GenomicRegionStore::GenomicRegionT *, bool> isRegionContainingReads;
+	static std::map<const GenomicRegionStore::GenomicRegionT *, int32_t> firstReadPosInRegion;
 
 	class CoverageHistogramVisitor : public BamTools::PileupVisitor {
 
@@ -20,22 +20,24 @@ namespace BamstatsAlive {
 			CoverageHistogramVisitor(_CoverageHistogramT& covHist, unsigned int& locs) 
 				: BamTools::PileupVisitor(), 
 				_histogram(covHist), 
-				_locs(locs), 
-				lastLoc(0),
-				hasSeenFirst(false) {
+				_locs(locs) {
 
 					;
 				}
 
 			void SetRegion(const GenomicRegionStore::GenomicRegionT * region) {
-				_currentRegion = region;
-				hasSeenFirst = false;
+				if(_currentRegion != region)
+					_currentRegion = region;
 			}
 
 			void Visit(const BamTools::PileupPosition& pileupData) {
 
 				if(_currentRegion != NULL && hasRegionBeenConsidered.find(_currentRegion) == hasRegionBeenConsidered.end()) {
 					int32_t prefixGapSize = pileupData.Position - _currentRegion->startPos;
+
+					if(firstReadPosInRegion.find(_currentRegion) != firstReadPosInRegion.end())
+						prefixGapSize = firstReadPosInRegion[_currentRegion] - _currentRegion->startPos;
+
 					LOGS<<"First position in a region, with "<<prefixGapSize<<" prefix gap size"<<std::endl;
 					if(prefixGapSize >= 0) {
 						_histogram[0] += prefixGapSize * 2;
@@ -45,7 +47,6 @@ namespace BamstatsAlive {
 				}
 
 				size_t s = pileupData.PileupAlignments.size();
-				lastLoc = pileupData.Position;
 
 				LOGS<<"PileupVisit: "<<pileupData.Position<<", coverage: "<<s<<std::endl;
 
@@ -107,7 +108,7 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
 				m_fragHist[frag]++;
 			else
 				m_fragHist[frag] = 1;
-		}                   
+		}
 	}
 
 
@@ -126,7 +127,13 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
 	}
 
 	if(readRegion != NULL) {
-		isRegionContainingReads[readRegion] = true;
+		if(firstReadPosInRegion.find(readRegion) != firstReadPosInRegion.end()) {
+			if (firstReadPosInRegion[readRegion] > al.Position)
+				firstReadPosInRegion[readRegion] = al.Position;
+		}
+		else {
+			firstReadPosInRegion[readRegion] = al.Position;
+		}
 	}
 
 
@@ -173,17 +180,18 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
 
 void HistogramStatsCollector::flushAllRegion() {
 	if(_regionStore) {
-		for(std::vector<GenomicRegionStore::GenomicRegionT>::const_iterator it = _regionStore->regions().begin(); it!=_regionStore->regions().end(); it++) {
-			LOGS<<"REGION "<<it->startPos<<" -- "<<it->endPos;
-			if(isRegionContainingReads.find(&(*it)) != isRegionContainingReads.end()) {
-				LOGS <<" has read, skipping" <<std::endl;
-				continue;
-			}
-			LOGS << " does not have read, counting 0s"<<std::endl;
+		if(firstReadPosInRegion.size() > 0) {
+			unsigned int emptyRegions = _regionStore->regions().size() - firstReadPosInRegion.size();
+			unsigned int averageLength = 0;
 
-			m_covHist[0] += (it->endPos - it->startPos);
-			m_covHistLocs += (it->endPos - it->startPos);
+			LOGS << "REGIONS CONTAINING READS: "<<firstReadPosInRegion.size()<<std::endl;
+			averageLength = m_covHistLocs / firstReadPosInRegion.size();
+			LOGS << "Average Length: "<<averageLength<<std::endl;
+			LOGS << "empty Regions: "<<emptyRegions<<std::endl;
+			m_covHistLocs += averageLength * emptyRegions;
+			m_covHist[0] += averageLength * emptyRegions;
 		}
+
 	}
 }
 
@@ -215,6 +223,8 @@ void HistogramStatsCollector::appendJsonImpl(json_t *jsonRootObj) {
 			}
 		}
 	} else {
+		// If kCovHistSkipFactor == 0, reset m_covHistAccumu so that next region
+		// is also counted towards coverage histogram
 		m_covHistAccumu = 0;
 	}
 

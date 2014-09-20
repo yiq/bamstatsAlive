@@ -29,13 +29,15 @@ namespace BamstatsAlive {
 				}
 			} GenomicRegionT;
 
+			typedef std::vector<GenomicRegionT> GenomicRegionVec;
+
 		protected:
-			std::vector<GenomicRegionT> _regions;
+			GenomicRegionVec _regions;
 
 		public:
 			GenomicRegionStore(const std::string& regionJson);
 
-			inline const std::vector<GenomicRegionT>& regions() { return _regions; }
+			inline const GenomicRegionVec& regions() { return _regions; }
 
 			// methods for locating a region
 			static const GenomicRegionT& kRegionNotFound(); 
