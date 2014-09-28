@@ -3,6 +3,7 @@
 #include <string>
 #include <iostream>
 #include "../bamstatsAliveCommon.hpp"
+#include <cstring>
 
 #define ASSERT_EQ(expr, expect, msg) { if ((expr) != (expect)) {std::cerr<<(msg)<<std::endl; exit(1);} }
 #define ASSERT_UNEQ(expr, expect, msg) { if ((expr) == (expect)) {std::cerr<<(msg)<<std::endl; exit(1);} }
