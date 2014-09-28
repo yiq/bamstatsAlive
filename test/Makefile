@@ -19,7 +19,7 @@ LIB_PARENT_OBJECTS=$(filter-out ../main.o, $(PARENT_OBJECTS))
 all: test
 
 clean:
-	rm -rf $(TEST_OBJECTS) $(TEST_BINS)
+	rm -rf $(TEST_OBJECTS) $(TESTS)
 
 .cc.o:
 	$(CXX) -c $< $(CXXFLAGS)
