@@ -20,7 +20,8 @@ namespace BamstatsAlive {
 			CoverageHistogramVisitor(_CoverageHistogramT& covHist, unsigned int& locs) 
 				: BamTools::PileupVisitor(), 
 				_histogram(covHist), 
-				_locs(locs) {
+				_locs(locs),
+				_currentRegion(NULL) {
 
 					;
 				}
