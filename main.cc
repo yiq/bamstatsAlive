@@ -99,7 +99,7 @@ int main(int argc, char* argv[]) {
 
 		}
 		catch(...) {
-			cout<<"{\"statis\":\"error\", \"message\":\"Cannot parse region json string\"}"<<endl;
+			cout<<"{\"status\":\"error\", \"message\":\"Cannot parse region json string\"}"<<endl;
 			exit(1);
 		}
 	}
