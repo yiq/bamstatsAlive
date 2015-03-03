@@ -9,10 +9,6 @@ static unsigned int firstUpdateRate;
 static std::string regionJson;
 static bool hasRegionSpec = false;
 
-static unsigned int regionStart;
-static unsigned int regionLength;
-
-
 using namespace std;
 using namespace BamstatsAlive;
 
@@ -32,16 +28,10 @@ int main(int argc, char* argv[]) {
 	 */
 
 	int ch;
-	while((ch = getopt(argc, argv, "u:f:s:l:r:")) != -1) {
+	while((ch = getopt(argc, argv, "u:f:r:")) != -1) {
 		switch(ch) {
 			case 'u':
 				updateRate = atoi(optarg);
-				break;
-			case 's':
-				regionStart = atoi(optarg);
-				break;
-			case 'l':
-				regionLength = atoi(optarg);
 				break;
 			case 'f':
 				firstUpdateRate = atoi(optarg);
@@ -96,7 +86,6 @@ int main(int argc, char* argv[]) {
 			regionStore = new GenomicRegionStore(regionJson);
 			LOGS<<regionStore->regions().size()<<" Regions specified"<<endl;
 			hsc = new HistogramStatsCollector(chromIDNameMap, 10, regionStore);
-
 		}
 		catch(...) {
 			cout<<"{\"status\":\"error\", \"message\":\"Cannot parse region json string\"}"<<endl;
@@ -108,13 +97,6 @@ int main(int argc, char* argv[]) {
 		hsc = new HistogramStatsCollector(chromIDNameMap, 10);
 	}
 	bsc.addChild(hsc);
-
-	// Coverage Map Statistics, only when regionLength is greater than 0
-	CoverageMapStatsCollector * csc = NULL;
-	if(regionLength != 0) {
-		csc = new CoverageMapStatsCollector(regionStart, regionLength);
-		bsc.addChild(csc);
-	}
 
 	/* Process read alignments */
 
@@ -139,7 +121,6 @@ int main(int argc, char* argv[]) {
 
 	if(hsc) delete hsc;
 	if(regionStore) delete regionStore;
-	if(csc) delete csc;
 }
 
 void printStatsJansson(AbstractStatCollector& rootStatCollector) {

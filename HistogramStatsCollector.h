@@ -39,6 +39,13 @@ namespace BamstatsAlive {
 			void startBaseCoverageRegion();
 			void endBaseCoverageRegion();
 
+			void updateReferenceHistogram(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector);
+			void updateMappingQualityHistogram(const BamTools::BamAlignment& al);
+			void updateReadLengthHistogram(const BamTools::BamAlignment& al);
+			void updateFragmentSizeHistogram(const BamTools::BamAlignment& al);
+			void updateBaseQualityHistogram(const BamTools::BamAlignment& al);
+			void updateRegionalStats(const BamTools::BamAlignment& al);
+
 		public:
 			HistogramStatsCollector(
 					std::map<int32_t, std::string>& chromIDNameMap,

@@ -49,8 +49,6 @@ namespace BamstatsAlive {
 
 				size_t s = pileupData.PileupAlignments.size();
 
-				LOGS<<"PileupVisit: "<<pileupData.Position<<", coverage: "<<s<<std::endl;
-
 				_CoverageHistogramT::iterator iter = _histogram.find(s);
 
 				if(iter == _histogram.end()) 	_histogram[s] = 1;
@@ -69,13 +67,16 @@ HistogramStatsCollector::HistogramStatsCollector(std::map<int32_t, std::string>&
 	m_covHistLocs(0), 
 	m_covHistAccumu(0),
 	_currentRegion(NULL),
-	_regionStore(regionStore)
+	_regionStore(regionStore),
+	_pileupEngine(NULL),
+	_readDepthHistVisitor(NULL)
 {
 
-	_pileupEngine = new BamTools::PileupEngine;
-	_readDepthHistVisitor = new CoverageHistogramVisitor(m_covHist, m_covHistLocs);
-	_pileupEngine->AddVisitor(_readDepthHistVisitor);
-
+	if(regionStore) {
+		_pileupEngine = new BamTools::PileupEngine;
+		_readDepthHistVisitor = new CoverageHistogramVisitor(m_covHist, m_covHistLocs);
+		_pileupEngine->AddVisitor(_readDepthHistVisitor);
+	}
 
 	memset(m_mappingQualHist, 0, sizeof(unsigned int) * 256);
 	memset(m_baseQualHist, 0, sizeof(unsigned int) * 51);
@@ -89,19 +90,23 @@ HistogramStatsCollector::~HistogramStatsCollector() {
 	if(_pileupEngine) delete _pileupEngine;
 }
 
-void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
+void HistogramStatsCollector::updateReferenceHistogram(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
+	// increment ref aln counter
+	if ( al.RefID != -1) m_refAlnHist[ refVector[al.RefID].RefName ]++;
+}
 
-    // increment ref aln counter
-    if ( al.RefID != -1) m_refAlnHist[ refVector[al.RefID].RefName ]++;
-    
+void HistogramStatsCollector::updateMappingQualityHistogram(const BamTools::BamAlignment& al) {
     m_mappingQualHist[al.MapQuality]++;    
+}
 
-    if(m_lengthHist.find(al.Length) != m_lengthHist.end())
-    	m_lengthHist[al.Length]++;
-    else
-    	m_lengthHist[al.Length] = 1;
+void HistogramStatsCollector::updateReadLengthHistogram(const BamTools::BamAlignment& al) {
+	if(m_lengthHist.find(al.Length) != m_lengthHist.end())
+		m_lengthHist[al.Length]++;
+	else
+		m_lengthHist[al.Length] = 1;
+}
 
-	// if alignment is paired-end
+void HistogramStatsCollector::updateFragmentSizeHistogram(const BamTools::BamAlignment& al) {
 	if ( al.IsPaired() && al.IsMapped() && al.IsMateMapped()) {
 		if( al.RefID == al.MateRefID && al.MatePosition > al.Position )  {
 			int32_t frag = al.InsertSize; //al.MatePosition - al.Position;
@@ -111,8 +116,20 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
 				m_fragHist[frag] = 1;
 		}
 	}
+}
 
+void HistogramStatsCollector::updateBaseQualityHistogram(const BamTools::BamAlignment& al) {
+	const unsigned char *q = (const unsigned char *)al.Qualities.c_str();
+	if (q[0] != 0xff) {
+		for (int i = 0; i < al.Qualities.length(); ++i) {
+			unsigned int qual = (unsigned int)(q[i]) - 33;
+			if(qual >50) qual = 50;
+			m_baseQualHist[qual]++;
+		}
+	}
+}
 
+void HistogramStatsCollector::updateRegionalStats(const BamTools::BamAlignment& al) {
 	const GenomicRegionStore::GenomicRegionT * readRegion = NULL;
 	if(_regionStore != NULL) {
 		const GenomicRegionStore::GenomicRegionT& readRegionStart = _regionStore->locateRegion(_chromIDNameMap[al.RefID].c_str(), al.Position);
@@ -125,9 +142,7 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
 				readRegion = &readRegionEnd;
 			}
 		}
-	}
 
-	if(readRegion != NULL) {
 		if(firstReadPosInRegion.find(readRegion) != firstReadPosInRegion.end()) {
 			if (firstReadPosInRegion[readRegion] > al.Position)
 				firstReadPosInRegion[readRegion] = al.Position;
@@ -139,15 +154,9 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
 
 
 	if(m_covHistAccumu == 0 && _pileupEngine) {
-		// add base quality histogram
-		const unsigned char *q = (const unsigned char *)al.Qualities.c_str();
-		if (q[0] != 0xff) {
-			for (int i = 0; i < al.Qualities.length(); ++i) {
-				unsigned int qual = (unsigned int)(q[i]) - 33;
-				if(qual >50) qual = 50;
-				m_baseQualHist[qual]++;
-			}
-		}
+
+		updateBaseQualityHistogram(al);
+
 
 		if(_currentRegion == NULL && _regionStore) {
 			// try to identify the region of this read
@@ -179,6 +188,19 @@ void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment&
 	}
 }
 
+void HistogramStatsCollector::processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
+
+	updateReferenceHistogram(al, refVector);
+
+	updateMappingQualityHistogram(al);
+
+	updateReadLengthHistogram(al);
+
+	updateFragmentSizeHistogram(al);
+
+	updateRegionalStats(al);
+}
+
 void HistogramStatsCollector::flushAllRegion() {
 	if(_regionStore) {
 		if(firstReadPosInRegion.size() > 0) {
@@ -199,7 +221,7 @@ void HistogramStatsCollector::flushAllRegion() {
 void HistogramStatsCollector::appendJsonImpl(json_t *jsonRootObj) {
 
 
-	if(kCovHistSkipFactor != 0) {
+	if(kCovHistSkipFactor != 0 && _regionStore) {
 		if(m_covHistAccumu >= kCovHistSkipFactor) {
 			// getting ready for another round of piling up
 
