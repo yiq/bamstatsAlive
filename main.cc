@@ -115,7 +115,6 @@ int main(int argc, char* argv[]) {
 	}
 
 	// count for all regions from which no read came
-	hsc->flushAllRegion();
 
 	printStatsJansson(bsc);
 
