@@ -4,26 +4,31 @@
 #pragma once
 
 #include "AbstractStatCollector.h"
+#include "GenomicRegionStore.h"
 
 namespace BamstatsAlive {
 
 	class CoverageMapStatsCollector : public AbstractStatCollector {
+		public:
+			using coverageHistT = std::map<size_t, unsigned int>;
+
 		protected:
-			unsigned int m_readDepth[256];
-
-			unsigned int regionStart;
-			unsigned int regionLength;
-
-			BamTools::PileupEngine * pileupEngine;
-			BamTools::PileupVisitor * visitor;
-
 			virtual void processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector);
 			virtual void appendJsonImpl(json_t * jsonRootObj);
 
+		private:	
+			const GenomicRegionStore::GenomicRegionT *_currentRegion;
+			unsigned int * _regionalCoverageMap;
+			const coverageHistT& _existingCoverageHist;
+			coverageHistT _coverageHist;
+			size_t _coveredLength;
 
 		public:
-			CoverageMapStatsCollector(unsigned int start, unsigned int length);
+			CoverageMapStatsCollector(const GenomicRegionStore::GenomicRegionT * currentRegion, const coverageHistT& existingHistogram);
+
 			virtual ~CoverageMapStatsCollector();
+
+			coverageHistT getEffectiveHistogram(unsigned int& totalPos); 
 	};
 }
 
