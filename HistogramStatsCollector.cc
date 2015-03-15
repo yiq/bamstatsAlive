@@ -96,6 +96,7 @@ void HistogramStatsCollector::updateRegionalStats(const BamTools::BamAlignment& 
 
 	// not even in a pileup region
 	if(m_covHistAccumu != 0) return;
+	if(_currentRegion == nullptr) return;
 
 	updateBaseQualityHistogram(al);
 
