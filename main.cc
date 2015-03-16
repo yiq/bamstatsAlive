@@ -6,6 +6,7 @@
 static unsigned int totalReads;
 static unsigned int updateRate;
 static unsigned int firstUpdateRate;
+static unsigned int coverageSkipFactor;
 static std::string regionJson;
 static bool hasRegionSpec = false;
 
@@ -19,6 +20,7 @@ int main(int argc, char* argv[]) {
 	string filename;
 	updateRate = 1000;
 	firstUpdateRate = 0;
+	coverageSkipFactor = 10;
 
 	/* process the parameters */
 	
@@ -28,7 +30,7 @@ int main(int argc, char* argv[]) {
 	 */
 
 	int ch;
-	while((ch = getopt(argc, argv, "u:f:r:")) != -1) {
+	while((ch = getopt(argc, argv, "u:f:k:r:")) != -1) {
 		switch(ch) {
 			case 'u':
 				updateRate = atoi(optarg);
@@ -39,6 +41,9 @@ int main(int argc, char* argv[]) {
 			case 'r':
 				regionJson = std::string(optarg);
 				hasRegionSpec = true;
+				break;
+			case 'k':
+				coverageSkipFactor = atoi(optarg);
 				break;
 		}
 	}
@@ -85,7 +90,7 @@ int main(int argc, char* argv[]) {
 		try {
 			regionStore = new GenomicRegionStore(regionJson);
 			LOGS<<regionStore->regions().size()<<" Regions specified"<<endl;
-			hsc = new HistogramStatsCollector(chromIDNameMap, 10, regionStore);
+			hsc = new HistogramStatsCollector(chromIDNameMap, coverageSkipFactor, regionStore);
 		}
 		catch(...) {
 			cout<<"{\"status\":\"error\", \"message\":\"Cannot parse region json string\"}"<<endl;

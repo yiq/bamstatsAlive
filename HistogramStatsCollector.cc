@@ -82,14 +82,17 @@ void HistogramStatsCollector::updateRegionalStats(const BamTools::BamAlignment& 
 	}
 
 	if(_currentRegion != _thisReadRegion) {
-		if(_currentRegion != nullptr && m_covHistAccumu == 0) {
-			// switched outside of pile up region
-			// update histogram and delete coverage collector
-			m_covHist = _coverageCollector->getEffectiveHistogram(m_covHistTotalPos);
-			delete _coverageCollector;
-			_coverageCollector = nullptr;
+		if(_currentRegion != nullptr ) {
+			if(m_covHistAccumu == 0) {
+				// switched outside of pile up region
+				// update histogram and delete coverage collector
+				m_covHist = _coverageCollector->getEffectiveHistogram(m_covHistTotalPos);
+				delete _coverageCollector;
+				_coverageCollector = nullptr;
+			}
+
+			m_covHistAccumu++;
 		}
-		//m_covHistAccumu++;
 		_currentRegion = _thisReadRegion;
 	}
 

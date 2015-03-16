@@ -12,11 +12,12 @@ CoverageMapStatsCollector::CoverageMapStatsCollector(const GenomicRegionStore::G
 	auto regionLength = _currentRegion->endPos - _currentRegion->startPos + 1;
 	_regionalCoverageMap = new unsigned int [regionLength];
 	memset(_regionalCoverageMap, 0, sizeof(unsigned int) * regionLength);
+
+	LOGS<<"new CoverageMapStatsCollector!!"<<std::endl;
 }
 
 CoverageMapStatsCollector::~CoverageMapStatsCollector() {
 	delete [] _regionalCoverageMap;
-	std::cerr<<"Coverage Map Stats Collector Destroyed"<<std::endl;
 }
 
 void CoverageMapStatsCollector::processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
@@ -46,7 +47,6 @@ CoverageMapStatsCollector::coverageHistT CoverageMapStatsCollector::getEffective
 	totalPos = 0;
 	coverageHistT effHist;
 	for(auto it = _coverageHist.cbegin(); it != _coverageHist.cend(); it++) {
-		std::cerr<<"accounting for cov "<<it->first<<std::endl;
 		if(_existingCoverageHist.find(it->first) != _existingCoverageHist.cend())
 			effHist[it->first] = _existingCoverageHist.at(it->first) + it->second;
 		else
@@ -56,7 +56,6 @@ CoverageMapStatsCollector::coverageHistT CoverageMapStatsCollector::getEffective
 	}
 	for(auto it = _existingCoverageHist.cbegin(); it != _existingCoverageHist.cend(); it++) {
 		if(effHist.find(it->first) == effHist.cend()) {
-			std::cerr<<"accounting for existing cov "<<it->first<<std::endl;
 			effHist[it->first] = it->second;
 			totalPos += effHist[it->first];
 		}
