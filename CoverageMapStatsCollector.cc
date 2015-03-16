@@ -16,22 +16,18 @@ CoverageMapStatsCollector::CoverageMapStatsCollector(const GenomicRegionStore::G
 
 CoverageMapStatsCollector::~CoverageMapStatsCollector() {
 	delete [] _regionalCoverageMap;
+	std::cerr<<"Coverage Map Stats Collector Destroyed"<<std::endl;
 }
 
 void CoverageMapStatsCollector::processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
 	if(!_currentRegion->contains(_currentRegion->chrom, al.Position) && !_currentRegion->contains(_currentRegion->chrom, al.Position + al.Length))
 		return;
 
-	auto readMappedStartPos = al.Position - _currentRegion->startPos;
-	auto readMappedEndPos = al.Position + al.Length - _currentRegion->startPos;
 	auto regionLength = _currentRegion->endPos - _currentRegion->startPos + 1;
-
-
-	if(readMappedStartPos < 0) readMappedStartPos = 0;
-	if(readMappedEndPos >= regionLength) readMappedEndPos = regionLength - 1;
+	auto readMappedStartPos = al.Position < _currentRegion->startPos ? 0 : al.Position - _currentRegion->startPos;
+	auto readMappedEndPos = al.Position + al.Length > _currentRegion->endPos ? regionLength - 1 : al.Position + al.Length - _currentRegion->startPos;
 
 	for(auto i=readMappedStartPos; i <= readMappedEndPos; i++) _regionalCoverageMap[i]++;
-
 
 	if(readMappedStartPos > _coveredLength) {
 		for(size_t i=_coveredLength; i<readMappedStartPos; i++) {
@@ -50,12 +46,20 @@ CoverageMapStatsCollector::coverageHistT CoverageMapStatsCollector::getEffective
 	totalPos = 0;
 	coverageHistT effHist;
 	for(auto it = _coverageHist.cbegin(); it != _coverageHist.cend(); it++) {
+		std::cerr<<"accounting for cov "<<it->first<<std::endl;
 		if(_existingCoverageHist.find(it->first) != _existingCoverageHist.cend())
 			effHist[it->first] = _existingCoverageHist.at(it->first) + it->second;
 		else
 			effHist[it->first] = it->second;
 
 		totalPos += effHist[it->first];
+	}
+	for(auto it = _existingCoverageHist.cbegin(); it != _existingCoverageHist.cend(); it++) {
+		if(effHist.find(it->first) == effHist.cend()) {
+			std::cerr<<"accounting for existing cov "<<it->first<<std::endl;
+			effHist[it->first] = it->second;
+			totalPos += effHist[it->first];
+		}
 	}
 
 	return effHist;

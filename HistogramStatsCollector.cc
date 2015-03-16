@@ -89,6 +89,7 @@ void HistogramStatsCollector::updateRegionalStats(const BamTools::BamAlignment& 
 			delete _coverageCollector;
 			_coverageCollector = nullptr;
 		}
+		//m_covHistAccumu++;
 		_currentRegion = _thisReadRegion;
 	}
 
