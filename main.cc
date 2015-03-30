@@ -3,11 +3,15 @@
 #include "HistogramStatsCollector.h"
 #include "CoverageMapStatsCollector.h"
 
+#include "FpsModulator.h"
+
 static unsigned int totalReads;
 static unsigned int updateRate;
 static unsigned int firstUpdateRate;
 static std::string regionJson;
 static bool hasRegionSpec = false;
+
+static size_t fps;
 
 using namespace std;
 using namespace BamstatsAlive;
@@ -31,7 +35,9 @@ int main(int argc, char* argv[]) {
 	while((ch = getopt(argc, argv, "u:f:r:")) != -1) {
 		switch(ch) {
 			case 'u':
-				updateRate = atoi(optarg);
+				//updateRate = atoi(optarg);
+				updateRate = 1000;
+				fps = atoi(optarg);
 				break;
 			case 'f':
 				firstUpdateRate = atoi(optarg);
@@ -100,6 +106,8 @@ int main(int argc, char* argv[]) {
 
 	/* Process read alignments */
 
+	YiCppLib::FpsModulator<decltype(updateRate)> fpsModulator(updateRate, fps, 250);
+
 	BamTools::BamAlignment alignment;
 	while(reader.GetNextAlignment(alignment)) {
 		totalReads++;
@@ -108,6 +116,8 @@ int main(int argc, char* argv[]) {
 		   (firstUpdateRate>0 && totalReads >= firstUpdateRate)) {
 			
 			printStatsJansson(bsc);
+
+			if(firstUpdateRate == 0) fpsModulator.redraw();
 
 			// disable first update after it has been fired.
 			if(firstUpdateRate > 0) firstUpdateRate = 0;
