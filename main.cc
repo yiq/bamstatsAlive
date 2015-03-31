@@ -37,8 +37,6 @@ int main(int argc, char* argv[]) {
 	while((ch = getopt(argc, argv, "u:f:k:r:")) != -1) {
 		switch(ch) {
 			case 'u':
-				//updateRate = atoi(optarg);
-				updateRate = 1000;
 				fps = atoi(optarg);
 				break;
 			case 'f':
@@ -117,15 +115,16 @@ int main(int argc, char* argv[]) {
 	while(reader.GetNextAlignment(alignment)) {
 		totalReads++;
 		bsc.processAlignment(alignment, refVector);
-		if((totalReads > 0 && totalReads % updateRate == 0) ||
-		   (firstUpdateRate>0 && totalReads >= firstUpdateRate)) {
+
+		if((totalReads > 0 && totalReads % updateRate == 0) /*||
+		   (firstUpdateRate>0 && totalReads >= firstUpdateRate)*/) {
 			
 			printStatsJansson(bsc);
 
-			if(firstUpdateRate == 0) fpsModulator.redraw();
+			fpsModulator.redraw();
 
 			// disable first update after it has been fired.
-			if(firstUpdateRate > 0) firstUpdateRate = 0;
+			//if(firstUpdateRate > 0) firstUpdateRate = 0;
 		}
 	}
 
