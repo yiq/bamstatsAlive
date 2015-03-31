@@ -1,88 +1,80 @@
 #include "CoverageMapStatsCollector.h"
 
-namespace BamstatsAlive {
-	class ReadDepthPileupVisitor : public BamTools::PileupVisitor {
-		protected:
-			unsigned int regionStart;
-			unsigned int regionLength;
-
-		public:
-			unsigned int m_baseCoverage[256];
-
-			ReadDepthPileupVisitor(unsigned int start, unsigned int length) : regionStart(start), regionLength(length) {
-				for(size_t i=0; i<256; i++)
-					m_baseCoverage[i] = 0;
-			}
-
-			virtual void Visit(const BamTools::PileupPosition& pileupData) {
-
-				//determining bin
-				int32_t pos = pileupData.Position;
-				if(pos < regionStart || pos > regionStart + regionLength)
-					return;
-				unsigned int index = (float)(pos - regionStart) / (float)regionLength * 256;
-				if(index >= 256) index=255; //Bound Safaguard
-
-				int32_t depth = pileupData.PileupAlignments.size();
-				for(size_t i=0; i<pileupData.PileupAlignments.size(); i++) {
-					if(pileupData.PileupAlignments[i].IsCurrentDeletion)
-						depth--;
-				}
-
-				m_baseCoverage[index]+=depth;
-			}
-	};
-}
-
 using namespace BamstatsAlive;
 using namespace std;
 
-CoverageMapStatsCollector::CoverageMapStatsCollector(unsigned int start, unsigned int length) : 
-	regionStart(start), regionLength(length), pileupEngine(NULL), visitor(NULL)
+CoverageMapStatsCollector::CoverageMapStatsCollector(const GenomicRegionStore::GenomicRegionT * currentRegion, const coverageHistT& existingHistogram) : 
+	AbstractStatCollector(), 
+	_currentRegion(currentRegion), 
+	_coveredLength(0), 
+	_existingCoverageHist(existingHistogram)
 {
-	pileupEngine = new BamTools::PileupEngine;
-	visitor = new ReadDepthPileupVisitor(regionStart, regionLength);
-	pileupEngine->AddVisitor(visitor);
+	auto regionLength = _currentRegion->endPos - _currentRegion->startPos + 1;
+	_regionalCoverageMap = new unsigned int [regionLength];
+	memset(_regionalCoverageMap, 0, sizeof(unsigned int) * regionLength);
 
-	for(size_t i=0; i<256; i++)
-		m_readDepth[i] = 0;
+	LOGS<<"new CoverageMapStatsCollector!!"<<std::endl;
 }
 
 CoverageMapStatsCollector::~CoverageMapStatsCollector() {
-	if(visitor) delete(visitor);
-	if(pileupEngine) delete pileupEngine;
+	delete [] _regionalCoverageMap;
 }
 
 void CoverageMapStatsCollector::processAlignmentImpl(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector) {
-	// Read depth stats
-	int32_t pos = al.Position;
-	if(pos < regionStart || pos > regionStart + regionLength)
+	if(!_currentRegion->contains(_currentRegion->chrom, al.Position) && !_currentRegion->contains(_currentRegion->chrom, al.Position + al.Length))
 		return;
-	unsigned int index = (float)(pos - regionStart) / (float)regionLength * 256;
-	if(index >= 256) index=255; //Bound Safaguard
 
-	m_readDepth[index]++;
+	auto regionLength = _currentRegion->endPos - _currentRegion->startPos + 1;
+	auto readMappedStartPos = al.Position < _currentRegion->startPos ? 0 : al.Position - _currentRegion->startPos;
+	auto readMappedEndPos = al.Position + al.Length > _currentRegion->endPos ? regionLength - 1 : al.Position + al.Length - _currentRegion->startPos;
 
-	pileupEngine->AddAlignment(al);
+	for(auto i=readMappedStartPos; i <= readMappedEndPos; i++) _regionalCoverageMap[i]++;
+
+	if(readMappedStartPos > _coveredLength) {
+		for(size_t i=_coveredLength; i<readMappedStartPos; i++) {
+			auto cov = _regionalCoverageMap[i];
+			auto covEntryIter = _coverageHist.find(cov);
+			if(covEntryIter != _coverageHist.end())
+				_coverageHist[cov]++;
+			else
+				_coverageHist[cov] = 1;
+		}
+		_coveredLength = readMappedStartPos;
+	}
+}
+
+CoverageMapStatsCollector::coverageHistT CoverageMapStatsCollector::getEffectiveHistogram(unsigned int& totalPos) {
+	totalPos = 0;
+	coverageHistT effHist;
+	for(auto it = _coverageHist.cbegin(); it != _coverageHist.cend(); it++) {
+		if(_existingCoverageHist.find(it->first) != _existingCoverageHist.cend())
+			effHist[it->first] = _existingCoverageHist.at(it->first) + it->second;
+		else
+			effHist[it->first] = it->second;
+
+		totalPos += effHist[it->first];
+	}
+	for(auto it = _existingCoverageHist.cbegin(); it != _existingCoverageHist.cend(); it++) {
+		if(effHist.find(it->first) == effHist.cend()) {
+			effHist[it->first] = it->second;
+			totalPos += effHist[it->first];
+		}
+	}
+
+	return effHist;
 }
 
 void CoverageMapStatsCollector::appendJsonImpl(json_t * jsonRootObj) {
-	json_t * j_base_coverage = json_object();
-	for(size_t i=0; i<256; i++) {
-		if (dynamic_cast<ReadDepthPileupVisitor *>(visitor)->m_baseCoverage[i] > 0) {
-			stringstream labelSS; labelSS << i;
-			json_object_set_new(j_base_coverage, labelSS.str().c_str(), json_integer(dynamic_cast<ReadDepthPileupVisitor*>(visitor)->m_baseCoverage[i]));
-		}
-	}
-	json_object_set_new(jsonRootObj, "base_coverage", j_base_coverage);
+	// Coverage Histogram
+	json_t * j_cov_hist = json_object();
 
-	json_t * j_read_depth = json_object();
-	for(size_t i=0; i<256; i++) {
-		if (m_readDepth[i] > 0) {
-			stringstream labelSS; labelSS << i;
-			json_object_set_new(j_read_depth, labelSS.str().c_str(), json_integer(m_readDepth[i]));
-		}
+	unsigned int totalPos = 0;
+	coverageHistT effHist = getEffectiveHistogram(totalPos);
+
+	for(auto it = effHist.begin(); it != effHist.end(); it++) {
+		stringstream labelSS; labelSS << it->first;
+		json_object_set_new(j_cov_hist, labelSS.str().c_str(), json_real( it->second / static_cast<double>(totalPos)));
 	}
-	json_object_set_new(jsonRootObj, "read_depth", j_read_depth);
+	json_object_set_new(jsonRootObj, "coverage_hist", j_cov_hist);
 }
 

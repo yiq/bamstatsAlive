@@ -5,10 +5,10 @@
 
 #include "AbstractStatCollector.h"
 #include "GenomicRegionStore.h"
+#include "CoverageMapStatsCollector.h"
 
 namespace BamstatsAlive {
 
-	typedef std::map<size_t, unsigned int> _CoverageHistogramT;
 
 	class HistogramStatsCollector : public AbstractStatCollector {
 		protected:
@@ -17,8 +17,8 @@ namespace BamstatsAlive {
 			std::map<int32_t, unsigned int> m_fragHist;
 			std::map<int32_t, unsigned int> m_lengthHist;
 			std::map<std::string, unsigned int> m_refAlnHist;
-			_CoverageHistogramT m_covHist;
-			unsigned int m_covHistLocs;
+			CoverageMapStatsCollector::coverageHistT m_covHist;
+			unsigned int m_covHistTotalPos;
 			unsigned int m_covHistAccumu;
 			const unsigned int kCovHistSkipFactor;
 
@@ -29,19 +29,16 @@ namespace BamstatsAlive {
 			// Functions to deal with intermitted base coverage calculation
 			const GenomicRegionStore::GenomicRegionT *_currentRegion;
 			GenomicRegionStore *_regionStore;
-			unsigned int * _regionalCoverageMap;
-
+			CoverageMapStatsCollector * _coverageCollector;
 
 			std::map<int32_t, std::string>& _chromIDNameMap;
-			void startBaseCoverageRegion();
-			void endBaseCoverageRegion();
 
 			void updateReferenceHistogram(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector);
 			void updateMappingQualityHistogram(const BamTools::BamAlignment& al);
 			void updateReadLengthHistogram(const BamTools::BamAlignment& al);
 			void updateFragmentSizeHistogram(const BamTools::BamAlignment& al);
 			void updateBaseQualityHistogram(const BamTools::BamAlignment& al);
-			void updateRegionalStats(const BamTools::BamAlignment& al);
+			void updateRegionalStats(const BamTools::BamAlignment& al, const BamTools::RefVector& refVector);
 
 		public:
 			HistogramStatsCollector(
@@ -49,7 +46,6 @@ namespace BamstatsAlive {
 					unsigned int skipFactor = 0, 
 					GenomicRegionStore* regionStore = NULL);
 			virtual ~HistogramStatsCollector();
-			void flushActiveRegion();
 	};
 }
 
