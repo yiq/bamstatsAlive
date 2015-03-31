@@ -22,7 +22,7 @@ void printStatsJansson(AbstractStatCollector& rootStatCollector);
 int main(int argc, char* argv[]) {
 	
 	string filename;
-	updateRate = 1000;
+	updateRate = 100;
 	firstUpdateRate = 0;
 	coverageSkipFactor = 10;
 
