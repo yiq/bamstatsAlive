@@ -8,6 +8,7 @@
 static unsigned int totalReads;
 static unsigned int updateRate;
 static unsigned int firstUpdateRate;
+static unsigned int wallReadCount = 400000;
 static unsigned int coverageSkipFactor;
 static std::string regionJson;
 static bool hasRegionSpec = false;
@@ -112,7 +113,7 @@ int main(int argc, char* argv[]) {
 	YiCppLib::FpsModulator<decltype(updateRate)> fpsModulator(updateRate, fps, 250);
 
 	BamTools::BamAlignment alignment;
-	while(reader.GetNextAlignment(alignment)) {
+	while(reader.GetNextAlignment(alignment) && totalReads <= wallReadCount) {
 		totalReads++;
 		bsc.processAlignment(alignment, refVector);
 
