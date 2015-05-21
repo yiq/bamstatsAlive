@@ -146,5 +146,5 @@ void printStatsJansson(AbstractStatCollector& rootStatCollector) {
 	rootStatCollector.appendJson(j_root);
 
 	// Dump the json
-	cout<<json_dumps(j_root, JSON_COMPACT | JSON_ENSURE_ASCII | JSON_PRESERVE_ORDER)<<endl;
+	cout<<json_dumps(j_root, JSON_COMPACT | JSON_ENSURE_ASCII | JSON_PRESERVE_ORDER)<<";"<<endl;
 }
