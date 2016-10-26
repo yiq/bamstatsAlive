@@ -12,6 +12,7 @@ static unsigned int wallReadCount = 400000;
 static unsigned int coverageSkipFactor;
 static std::string regionJson;
 static bool hasRegionSpec = false;
+static bool isBatch = false;
 
 static size_t fps;
 
@@ -35,7 +36,7 @@ int main(int argc, char* argv[]) {
 	 */
 
 	int ch;
-	while((ch = getopt(argc, argv, "u:f:k:r:")) != -1) {
+	while((ch = getopt(argc, argv, "u:f:k:r:b")) != -1) {
 		switch(ch) {
 			case 'u':
 				fps = atoi(optarg);
@@ -50,6 +51,10 @@ int main(int argc, char* argv[]) {
 			case 'k':
 				coverageSkipFactor = atoi(optarg);
 				break;
+            case 'b':
+                isBatch = true;
+                coverageSkipFactor = 1;
+                break;
 		}
 	}
 
@@ -104,34 +109,34 @@ int main(int argc, char* argv[]) {
 	}
 	else {
 		LOGS<<"Does not have region spec"<<std::endl;
-		hsc = new HistogramStatsCollector(chromIDNameMap, 10);
+		hsc = new HistogramStatsCollector(chromIDNameMap, coverageSkipFactor);
 	}
 	bsc.addChild(hsc);
 
 	/* Process read alignments */
-
-	YiCppLib::FpsModulator<decltype(updateRate)> fpsModulator(updateRate, fps, 250);
-
 	BamTools::BamAlignment alignment;
-	while(reader.GetNextAlignment(alignment) && totalReads <= wallReadCount) {
-		totalReads++;
-		bsc.processAlignment(alignment, refVector);
 
-		if((totalReads > 0 && totalReads % updateRate == 0) /*||
-		   (firstUpdateRate>0 && totalReads >= firstUpdateRate)*/) {
-			
-			printStatsJansson(bsc);
+    if(isBatch) {
+        while(reader.GetNextAlignment(alignment)) {
+            totalReads++;
+            bsc.processAlignment(alignment, refVector);
+        }
+        printStatsJansson(bsc);
+    }
+    else {
+        YiCppLib::FpsModulator<decltype(updateRate)> fpsModulator(updateRate, fps, 250);
+        while(reader.GetNextAlignment(alignment) && totalReads <= wallReadCount) {
+            totalReads++;
+            bsc.processAlignment(alignment, refVector);
 
-			fpsModulator.redraw();
-
-			// disable first update after it has been fired.
-			//if(firstUpdateRate > 0) firstUpdateRate = 0;
-		}
-	}
-
-	// count for all regions from which no read came
-
-	printStatsJansson(bsc);
+            if((totalReads > 0 && totalReads % updateRate == 0)) {
+                printStatsJansson(bsc);
+                fpsModulator.redraw();
+            }
+        }
+        // count for all regions from which no read came
+        printStatsJansson(bsc);
+    }
 
 	if(hsc) delete hsc;
 	if(regionStore) delete regionStore;

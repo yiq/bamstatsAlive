@@ -1,4 +1,4 @@
-CFLAGS=-std=c++11 -I$(BAMTOOLS)/src -I$(BAMTOOLS) -Ilib/jansson-2.5/src 
+CFLAGS=-std=c++11 -I$(BAMTOOLS)/src -I$(BAMTOOLS) -Ilib/jansson-2.8/src 
 LDFLAGS=-L$(BAMTOOLS)/lib -lbamtools
 
 .SUFFIXES: .cc
@@ -22,7 +22,7 @@ OBJECTS+=bamtools_pileup_engine.o
 #		GenomicRegionStore.o \
 #		bamtools_pileup_engine.o 
 
-STATLIBS=lib/jansson-2.5/src/.libs/libjansson.a
+STATLIBS=lib/jansson-2.8/src/.libs/libjansson.a
 
 all: release
 
@@ -36,7 +36,7 @@ clean:
 	rm -rf *.o *.dSYM bamstatsAlive bamstatsAliveCommon.hpp.gch
 
 clean-dep:
-	make -C lib/jansson-2.5 clean
+	make -C lib/jansson-2.8 clean
 
 .PHONY: all clean clean-dep
 
@@ -55,12 +55,12 @@ bamstatsAlive: checkvar libjansson bamstatsAliveCommon.hpp.gch $(OBJECTS)
 checkvar:
 	@if [ "x$(BAMTOOLS)" = "x" ]; then echo "BAMTOOLS need to be defined"; exit 1; fi
 
-libjansson: lib/jansson-2.5/src/.libs/libjansson.a
+libjansson: lib/jansson-2.8/src/.libs/libjansson.a
 
-lib/jansson-2.5/src/.libs/libjansson.a:
+lib/jansson-2.8/src/.libs/libjansson.a:
 	@if [ ! -d lib ]; then mkdir lib; fi
-	@if [ ! -d lib/jansson-2.5 ]; then cd lib; curl -o - http://www.digip.org/jansson/releases/jansson-2.5.tar.gz | tar -xzf - ; fi
-	@cd lib/jansson-2.5; ./configure --disable-shared --enable-static; make; cd ../..
+	@if [ ! -d lib/jansson-2.8 ]; then cd lib; curl -o - http://www.digip.org/jansson/releases/jansson-2.8.tar.gz | tar -xzf - ; fi
+	@cd lib/jansson-2.8; ./configure --disable-shared --enable-static; make; cd ../..
 
 test1:
 	curl --silent "http://bammerger.iobio.io/?binary=true&cmd=11:10108473-10188473%20http://s3.amazonaws.com/1000genomes/data/NA06984/alignment/NA06984.chrom11.ILLUMINA.bwa.CEU.low_coverage.20111114.bam%20http://s3.amazonaws.com/1000genomes/data/NA06985/alignment/NA06985.chrom11.ILLUMINA.bwa.CEU.low_coverage.20111114.bam" | ./bamstatsAlive
