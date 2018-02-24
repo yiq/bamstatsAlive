@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
 	 */
 
 	int ch;
-	while((ch = getopt(argc, argv, "u:f:k:r:b")) != -1) {
+	while((ch = getopt(argc, argv, "u:f:k:r:t:b")) != -1) {
 		switch(ch) {
 			case 'u':
 				fps = atoi(optarg);
