@@ -5,12 +5,18 @@
 
 #include "FpsModulator.h"
 
+#include <iostream>
+#include <fstream>
+#include <streambuf>
+#include <string>
+
 static unsigned int totalReads;
 static unsigned int updateRate;
 static unsigned int firstUpdateRate;
 static unsigned int wallReadCount = 400000;
 static unsigned int coverageSkipFactor;
 static std::string regionJson;
+static std::string regionJsonFile;
 static bool hasRegionSpec = false;
 static bool isBatch = false;
 
@@ -48,7 +54,15 @@ int main(int argc, char* argv[]) {
 				regionJson = std::string(optarg);
 				hasRegionSpec = true;
 				break;
-			case 'k':
+            case 't':
+                {
+                    regionJsonFile = std::string(optarg);
+                    std::ifstream fs(regionJsonFile);
+                    regionJson = std::string((std::istreambuf_iterator<char>(fs)), std::istreambuf_iterator<char>());
+                    hasRegionSpec = true;
+                    break;
+                }
+            case 'k':
 				coverageSkipFactor = atoi(optarg);
 				break;
             case 'b':

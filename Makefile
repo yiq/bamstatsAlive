@@ -1,5 +1,5 @@
 CFLAGS=-std=c++11 -I$(BAMTOOLS)/src -I$(BAMTOOLS) -Ilib/jansson-2.8/src 
-LDFLAGS=-L$(BAMTOOLS)/lib -lbamtools
+LDFLAGS=-L$(BAMTOOLS)/lib -L$(BAMTOOLS)/build/src/api -lbamtools -lz
 
 .SUFFIXES: .cc
 
