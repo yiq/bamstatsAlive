@@ -59,7 +59,7 @@ libjansson: lib/jansson-2.8/src/.libs/libjansson.a
 
 lib/jansson-2.8/src/.libs/libjansson.a:
 	@if [ ! -d lib ]; then mkdir lib; fi
-	@if [ ! -d lib/jansson-2.8 ]; then cd lib; curl -o - http://www.digip.org/jansson/releases/jansson-2.8.tar.gz | tar -xzf - ; fi
+	@if [ ! -d lib/jansson-2.8 ]; then cd lib; curl -Lo - https://digip.org/jansson/releases/jansson-2.8.tar.gz | tar -xzf - ; fi
 	@cd lib/jansson-2.8; ./configure --disable-shared --enable-static; make; cd ../..
 
 test1:
